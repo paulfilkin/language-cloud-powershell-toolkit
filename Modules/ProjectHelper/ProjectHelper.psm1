@@ -23,7 +23,7 @@ function New-Project
         [String] $fileProcessingConfiguration,
         [String] $workflow,
         [String] $pricingModel,
-        [Bool] $restrictFileDownload = $false,
+        [String] $restrictFileDownload = $false,
         [String] $scheduletemplate,
         [String[]] $userManagers,
         [String[]] $groupsManager,
@@ -40,8 +40,11 @@ function New-Project
         return;
     }
 
-    $sourceLang = $projectCreateResponse.languageDirections[0].sourceLanguage.languageCode;
-    Add-SourceFiles $accessKey $projectCreateResponse.Id $sourceLang $filesPath $referenceFileNames
+    if (Add-SourceFiles $accessKey $projectCreateResponse.Id $sourceLanguage $filesPath -eq $false)
+    {
+        return;
+    }
+
     return Start-Project $accessKey $projectCreateResponse.Id;
 }
 
@@ -59,52 +62,13 @@ function Start-Project
     return Invoke-RestMethod "https://lc-api.sdl.com/public-api/v1/projects/$projectId/start" -Method 'PUT' -Headers $headers
 }
 
-function Add-File # this should be changed to add-files
-{
-    param (
-        [psobject] $accessKey,
-        [String] $projectId,
-        [psobject] $file,
-        [psobject] $properties
-    )
-
-    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-    $headers.Add("X-LC-Tenant", $accessKey.tenant)
-    $headers.Add("Content-Type", "multipart/form-data")
-    $headers.Add("Accept", "application/json")
-    $headers.Add("Authorization", $accessKey.token)
-
-        
-    $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
-    $stringHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
-    $stringHeader.Name = "properties"
-    $json = $properties | ConvertTo-Json -depth 5;
-    $stringContent = [System.Net.Http.StringContent]::new($json)
-    $stringContent.Headers.ContentDisposition = $stringHeader
-    $multipartContent.Add($stringContent)
-
-    $multipartFile = $file.FullName
-    $FileStream = [System.IO.FileStream]::new($multipartFile, [System.IO.FileMode]::Open)
-    $fileHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
-    $fileHeader.Name = "file"
-    $fileHeader.FileName = $file.FullName
-    $fileContent = [System.Net.Http.StreamContent]::new($FileStream)
-    $fileContent.Headers.ContentDisposition = $fileHeader
-    $multipartContent.Add($fileContent)
-
-    $body = $multipartContent
-    
-    $Null = Invoke-RestMethod "https://lc-api.sdl.com/public-api/v1/projects/$projectId/source-files" -Method 'POST' -Headers $headers -Body $body
-}
-
 function Add-SourceFiles 
 {
     param (
         [psobject] $accessKey,
         [string] $projectId,
         [String] $sourceLanguage,
-        [String] $filesPath,
-        [string[]] $referenceFileNames
+        [String] $filesPath
     )
 
     $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
@@ -129,34 +93,42 @@ function Add-SourceFiles
 
     foreach ($file in $files)
     {
-        if ($file.Name -in $referenceFileNames)
+        $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
+        $stringHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
+        $properties = @{
+                        name     = $file.Name                     # Use the actual file name
+                        role     = "translatable"                 # Set the desired role (translatable, reference, unknown)
+                        type     = "native"                       # Set the desired file type (native, bcm, sdlxliff)
+                        language = $sourceLanguage                        # Replace with the actual language code
+                    }
+        $stringHeader.Name = "properties"
+        $jsonproperties = $properties | ConvertTo-Json -Depth 5
+        $stringContent = [System.Net.Http.StringContent]::new($jsonproperties)
+        $stringContent.Headers.ContentDisposition = $stringHeader
+        $multipartContent.Add($stringContent)
+    
+        $multipartFile = $file.FullName
+        $FileStream = [System.IO.FileStream]::new($multipartFile, [System.IO.FileMode]::Open)
+        $fileHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
+        $fileHeader.Name = "file"
+        $fileHeader.FileName = $file.FullName
+        $fileContent = [System.Net.Http.StreamContent]::new($FileStream)
+        $fileContent.Headers.ContentDisposition = $fileHeader
+        $multipartContent.Add($fileContent)
+    
+        $body = $multipartContent
+    
+        try 
         {
-            $fileRole = "reference"
+            Invoke-RestMethod "https://lc-api.sdl.com/public-api/v1/projects/$projectId/source-files" -Method 'POST' -Headers $headers -Body $body
         }
-        else 
+        catch 
         {
-            $fileRole = "translatable"
+            return $false
         }
+    }
 
-        if ($file.FullName.EndsWith(".sdlxliff"))
-        {
-            $fileType = "sdlxliff"
-        }
-        else 
-        {
-            $fileType = "native"
-        }
-
-        $properties = [ordered]@{
-            name = $file.Name
-            role = $fileRole
-            type = $fileType
-            language = $sourceLanguage
-        }
-
-        # Here I should also create the type of file..
-        $null = Add-File $accessKey $projectId $file $properties
-    }   
+    return $true;
 
 }
 
@@ -175,7 +147,7 @@ function New-ProjectRequest
         [String] $fileProcessingConfiguration,
         [String] $workflow,
         [String] $pricingModel,
-        [Bool] $restrictFileDownload = $false,
+        [String] $restrictFileDownload = $false,
         [String] $scheduletemplate,
         [String[]] $userManagers,
         [String[]] $groupsManager,
@@ -218,7 +190,7 @@ function Get-ProjectBody
         [String] $fileProcessingConfiguration,
         [String] $workflow,
         [String] $pricingModel,
-        [Bool] $restrictFileDownload = $false,
+        [String] $restrictFileDownload = $false,
         [String] $scheduletemplate,
         [String[]] $userManagers,
         [String[]] $groupsManager,
@@ -245,11 +217,6 @@ function Get-ProjectBody
         $project.projectTemplate = @{
             "id" = $template.Id
             "strategy" = "copy"
-        }
-
-        if ($project.languageDirections.Count -eq 0)
-        {
-            $project.languageDirections = $template.LanguageDirections
         }
     }
 
@@ -298,7 +265,7 @@ function Get-ProjectBody
         }
     }
 
-    $project.forceOnline = $restrictFileDownload.ToString().ToLower();
+    $project.forceOnline = $restrictFileDownload.ToLower();
 
     if ($includeSettings)
     {
@@ -394,4 +361,3 @@ function Get-ResourceByNameOrId
 }
 
 Export-ModuleMember New-Project;
-Export-ModuleMember Get-ProjectBody;
