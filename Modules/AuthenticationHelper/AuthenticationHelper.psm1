@@ -1,9 +1,8 @@
 
-
 function Get-AccessKey
 {
     param (
-        [String] $id,
+        [String] $id, 
         [String] $secret,
         [String] $lcTenant
     )

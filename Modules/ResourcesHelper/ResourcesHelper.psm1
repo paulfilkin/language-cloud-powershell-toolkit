@@ -1,70 +1,74 @@
 function Get-AllProjectTemplates 
 {
     param (
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey
     )
 
-    $projectTemplatesEndpoint = 'https://lc-api.sdl.com/public-api/v1/project-templates?fields=id,name,description,languageDirections,location';
-    return Get-AllItems $accessKey $projectTemplatesEndpoint;
+    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/project-templates?fields=id,name,description,languageDirections,location'
 }
 
 function Get-AllTranslationEngines 
 {
     param (
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey
     )
-    $translationEnginesEndpoint = 'https://lc-api.sdl.com/public-api/v1/translation-engines?fields=name,description,location,definition'
-    return Get-AllItems $accessKey $translationEnginesEndpoint;
+    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/translation-engines?fields=name,description,location,definition'
 }
 
 function Get-AllCustomers 
 {
     param (
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey
     )
-
-    $customersEndpoint = 'https://lc-api.sdl.com/public-api/v1/customers?fields=id,name,location'
-    return Get-AllItems $accessKey $customersEndpoint
+    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/customers?fields=id,name,location'
 }
 
 function Get-AllFileTypeConfigurations
 {
     param (
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey
     )
-
-    $fileTypeConfigurationsEndpoint = 'https://lc-api.sdl.com/public-api/v1/file-processing-configurations?fields=id,name,location'
-    return Get-AllItems $accessKey $fileTypeConfigurationsEndpoint
+    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/file-processing-configurations?fields=id,name,location'
 }
 
 function Get-AllWorkflows 
 {
     param (
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey
     )
-
-    $workflowsEndpoint = 'https://lc-api.sdl.com/public-api/v1/workflows?fields=id,name,description,location,workflowTemplate,languageDirections'
-    return Get-AllItems $accessKey $workflowsEndpoint;
+    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/workflows?fields=id,name,description,location,workflowTemplate,languageDirections'
 }
 
 function Get-AllPricingModels 
 {
     param (
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey
     )
-
-    $pricingModelsEndpoint = 'https://lc-api.sdl.com/public-api/v1/pricing-models?fields=id,name,description,currencyCode,location';
-    return Get-AllItems $accessKey $pricingModelsEndpoint;
+    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/pricing-models?fields=id,name,description,currencyCode,location'
 }
 
 function Get-AllScheduleTemplates 
 {
     param (
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey
     )
-    
-    $scheduleTemplatesEndpoint = 'https://lc-api.sdl.com/public-api/v1/schedule-templates?fields=name,description,location'
-    return Get-AllItems $accessKey $scheduleTemplatesEndpoint
+    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/schedule-templates?fields=name,description,location'
+}
+
+function Get-AllLocations 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey
+    )
+    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/folders'
 }
 
 function Get-AllItems
@@ -97,3 +101,4 @@ Export-ModuleMember Get-AllWorkflows;
 Export-ModuleMember Get-AllPricingModels;
 Export-ModuleMember Get-AllScheduleTemplates;
 Export-ModuleMember Get-AllFileTypeConfigurations;
+Export-ModuleMember Get-AllLocations;

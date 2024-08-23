@@ -16,14 +16,16 @@ function New-Project
         [String[]] $referenceFileNames,
         [String] $sourceLanguage,
         [String[]] $targetLanguages,
-        [String] $customerName,
+        [String] $customer,
+        [String] $location,
         [String] $description,
         [String] $projectTemplate,
         [String] $translationEngine,
         [String] $fileProcessingConfiguration,
         [String] $workflow,
         [String] $pricingModel,
-        [String] $restrictFileDownload = $false,
+        [Switch] $restrictFileDownloadSpecified,
+        [Bool] $restrictFileDownload = $false, 
         [String] $scheduletemplate,
         [String[]] $userManagers,
         [String[]] $groupsManager,
@@ -33,19 +35,32 @@ function New-Project
         [Int32] $configReminderDays = 7
     )
 
-    $projectCreateResponse = New-ProjectRequest $accessKey $projectName $projectDueDate $sourceLanguage $targetLanguages $customerName $description $projectTemplate $translationEngine $fileProcessingConfiguration $workflow $pricingModel $restrictFileDownload $scheduletemplate $userManagers $groupsManager $includeSettings $configCompleteDays $configArchiveDays $configReminderDays
+    $projectBody = Get-ProjectBody -accessKey $accessKey -name $projectName -dueBy $projectDueDate `
+                                   -sourceLanguage $sourceLanguage -targetLanguages $targetLanguages `
+                                   -customerName $customer -location $location -description $description `
+                                   -projectTemplate $projectTemplate -translationEngine $translationEngine `
+                                   -fileProcessingConfiguration $fileProcessingConfiguration -workflow $workflow `
+                                   -pricingModel $pricingModel -scheduletemplate $scheduletemplate `
+                                   -restrictFileDownload $restrictFileDownload -userManagers $userManagers `
+                                   -groupManagers $groupsManager -includeSettings $includeSettings `
+                                   -configCompleteDays $configCompleteDays -configArchiveDays $configArchiveDays `
+                                   -configReminderDays $configReminderDays -restrictFileDownloadSpecified $restrictFileDownloadSpecified
+
+    $projectCreateResponse = Get-ProjectCreationRequest -accessKey $accessKey -project $projectBody
+    Write-Host "Creating the project..." -ForegroundColor Green
 
     if ($null -eq $projectCreateResponse)
     {
         return;
     }
 
-    if (Add-SourceFiles $accessKey $projectCreateResponse.Id $sourceLanguage $filesPath -eq $false)
-    {
-        return;
-    }
+    $sourceLang = $projectCreateResponse.languageDirections[0].sourceLanguage.languageCode;
 
-    return Start-Project $accessKey $projectCreateResponse.Id;
+    Write-Host "Adding the source files..." -ForegroundColor Green
+    Add-SourceFiles $accessKey $projectCreateResponse.Id $sourceLang $filesPath $referenceFileNames
+
+    $null = Start-Project $accessKey $projectCreateResponse.Id;
+    Write-Host "Project created..." -ForegroundColor Green
 }
 
 function Start-Project
@@ -62,13 +77,59 @@ function Start-Project
     return Invoke-RestMethod "https://lc-api.sdl.com/public-api/v1/projects/$projectId/start" -Method 'PUT' -Headers $headers
 }
 
+function Add-File
+{
+    param (
+        [psobject] $accessKey,
+        [String] $projectId,
+        [psobject] $file,
+        [psobject] $properties
+    )
+
+    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+    $headers.Add("X-LC-Tenant", $accessKey.tenant)
+    $headers.Add("Content-Type", "multipart/form-data")
+    $headers.Add("Accept", "application/json")
+    $headers.Add("Authorization", $accessKey.token)
+
+        
+    $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
+    $stringHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
+    $stringHeader.Name = "properties"
+    $json = $properties | ConvertTo-Json -depth 5;
+    $stringContent = [System.Net.Http.StringContent]::new($json)
+    $stringContent.Headers.ContentDisposition = $stringHeader
+    $multipartContent.Add($stringContent)
+
+    $multipartFile = $file.FullName
+    $FileStream = [System.IO.FileStream]::new($multipartFile, [System.IO.FileMode]::Open)
+    $fileHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
+    $fileHeader.Name = "file"
+    $fileHeader.FileName = $file.FullName
+    $fileContent = [System.Net.Http.StreamContent]::new($FileStream)
+    $fileContent.Headers.ContentDisposition = $fileHeader
+    $multipartContent.Add($fileContent)
+
+    $body = $multipartContent
+    
+    try {
+     $null = Invoke-RestMethod "https://lc-api.sdl.com/public-api/v1/projects/$projectId/source-files" -Method 'POST' -Headers $headers -Body $body
+     Write-Host "File [" $file.Name "] added" -ForegroundColor Green
+    }
+    catch 
+    {
+        Write-Host "Error adding the file" $file.Name "$_." -ForegroundColor Red
+    }
+}
+
 function Add-SourceFiles 
 {
     param (
         [psobject] $accessKey,
         [string] $projectId,
         [String] $sourceLanguage,
-        [String] $filesPath
+        [String] $filesPath,
+        [string[]] $referenceFileNames
     )
 
     $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
@@ -93,86 +154,34 @@ function Add-SourceFiles
 
     foreach ($file in $files)
     {
-        $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
-        $stringHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
-        $properties = @{
-                        name     = $file.Name                     # Use the actual file name
-                        role     = "translatable"                 # Set the desired role (translatable, reference, unknown)
-                        type     = "native"                       # Set the desired file type (native, bcm, sdlxliff)
-                        language = $sourceLanguage                        # Replace with the actual language code
-                    }
-        $stringHeader.Name = "properties"
-        $jsonproperties = $properties | ConvertTo-Json -Depth 5
-        $stringContent = [System.Net.Http.StringContent]::new($jsonproperties)
-        $stringContent.Headers.ContentDisposition = $stringHeader
-        $multipartContent.Add($stringContent)
-    
-        $multipartFile = $file.FullName
-        $FileStream = [System.IO.FileStream]::new($multipartFile, [System.IO.FileMode]::Open)
-        $fileHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
-        $fileHeader.Name = "file"
-        $fileHeader.FileName = $file.FullName
-        $fileContent = [System.Net.Http.StreamContent]::new($FileStream)
-        $fileContent.Headers.ContentDisposition = $fileHeader
-        $multipartContent.Add($fileContent)
-    
-        $body = $multipartContent
-    
-        try 
+        if ($file.Name -in $referenceFileNames)
         {
-            Invoke-RestMethod "https://lc-api.sdl.com/public-api/v1/projects/$projectId/source-files" -Method 'POST' -Headers $headers -Body $body
+            $fileRole = "reference"
         }
-        catch 
+        else 
         {
-            return $false
+            $fileRole = "translatable"
         }
-    }
 
-    return $true;
+        if ($file.FullName.EndsWith(".sdlxliff"))
+        {
+            $fileType = "sdlxliff"
+        }
+        else 
+        {
+            $fileType = "native"
+        }
 
-}
+        $properties = [ordered]@{
+            name = $file.Name
+            role = $fileRole
+            type = $fileType
+            language = $sourceLanguage
+        }
 
-function New-ProjectRequest 
-{
-    param (
-        [psobject] $accessKey,
-        [String] $projectName,
-        [String] $projectDueDate,
-        [String] $sourceLanguage,
-        [String[]] $targetLanguages,
-        [String] $customerName, #mandatory for location
-        [String] $description,
-        [String] $projectTemplate,
-        [String] $translationEngine,
-        [String] $fileProcessingConfiguration,
-        [String] $workflow,
-        [String] $pricingModel,
-        [String] $restrictFileDownload = $false,
-        [String] $scheduletemplate,
-        [String[]] $userManagers,
-        [String[]] $groupsManager,
-        [Bool] $includeSettings = $false,
-        [Int32] $configCompleteDays = 90,
-        [Int32] $configArchiveDays = 90,
-        [Int32] $configReminderDays = 7
-    )
+        $null = Add-File $accessKey $projectId $file $properties
+    }   
 
-    $projectBody = Get-ProjectBody $accessKey $projectName $projectDueDate $sourceLanguage $targetLanguages $customerName $description $projectTemplate $translationEngine $fileProcessingConfiguration $workflow $pricingModel $restrictFileDownload $scheduletemplate $userManagers $groupsManager $includeSettings $configCompleteDays $configArchiveDays $configReminderDays
-    $jsonBody = $projectBody | ConvertTo-Json -Depth 100;
-
-    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-    $headers.Add("X-LC-Tenant", $accessKey.tenant)
-    $headers.Add("Content-Type", "application/json")
-    $headers.Add("Accept", "application/json")
-    $headers.Add("Authorization", $accessKey.token)
-
-    try 
-    {
-        return Invoke-RestMethod 'https://lc-api.sdl.com/public-api/v1/projects' -Method 'POST' -Headers $headers -Body $jsonBody;
-    }
-    catch {
-        Write-Host "$_"
-    }
 }
 
 function Get-ProjectBody
@@ -184,16 +193,18 @@ function Get-ProjectBody
         [String] $sourceLanguage,
         [String[]] $targetLanguages,
         [String] $customerName,
+        [string] $location,
         [String] $description,
         [String] $projectTemplate,
         [String] $translationEngine,
         [String] $fileProcessingConfiguration,
         [String] $workflow,
         [String] $pricingModel,
-        [String] $restrictFileDownload = $false,
         [String] $scheduletemplate,
+        [Bool] $restrictFileDownload = $false,
+        [Switch] $restrictFileDownloadSpecified,
         [String[]] $userManagers,
-        [String[]] $groupsManager,
+        [String[]] $groupManagers,
         [Bool] $includeSettings = $false,
         [Int32] $configCompleteDays = 90,
         [Int32] $configArchiveDays = 90,
@@ -204,69 +215,39 @@ function Get-ProjectBody
         "name" = $name
         "dueBy" = $dueBy
         "languageDirections" = @($(Get-LanguageDirections $sourceLanguage $targetLanguages))
+        "description" = $description
     }
 
-    $customer = Get-ResourceByNameOrId $accessKey $customerName "Customer"
-    $project.location = $customer.location.id;
-
-    $project.description = $description;
-
-    if ($projectTemplate)
+    if ($customerName)
     {
-        $template = Get-ResourceByNameOrId $accessKey $projectTemplate "ProjectTemplate"
-        $project.projectTemplate = @{
-            "id" = $template.Id
-            "strategy" = "copy"
-        }
+        Write-Host "I was called";
+        $customerObject = Get-ResourceByNameOrId -accessKey $accessKey -resourceIdOrName $customerName -resourceType "Customer"
+        $project.location = $customerObject.location.id
     }
-
-    if ($translationEngine)
+    elseif ($location)
     {
-        $tEngine = Get-ResourceByNameOrId $accessKey $translationEngine "TranslationEngine"
-        $project.translationEngine = @{
-            "id" = $tEngine.Id
-            "strategy" = "copy"
-        }
+        $locationObject = Get-ResourceByNameOrId -accessKey $accessKey -resourceIdOrName $location -resourceType "Location"
+        $project.location = $locationObject.id;
     }
 
-    if ($fileProcessingConfiguration)
+    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $projectTemplate -resourceType "ProjectTemplate" -propertyName "projectTemplate"
+    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $translationEngine -resourceType "TranslationEngine" -propertyName "translationEngine"
+    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $fileProcessingConfiguration -resourceType "FileProcessingConfiguration" -propertyName "fileProcessingConfiguration"
+    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $workflow -resourceType "Workflow" -propertyName "workflow"
+    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $pricingModel -resourceType "PricingModel" -propertyName "pricingModel"
+    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $scheduleTemplate -resourceType "ScheduleTemplate" -propertyName "scheduleTemplate"
+    Get-And-AssignProjectManagers -accessKey $accessKey -project $project -userManagers $userManagers -groupsManagers $groupManagers
+
+    if ($projectTemplate -and $project.languageDirections.Count -eq 0) {
+        $templateObject = Get-ResourceByNameOrId $accessKey $projectTemplate "projectTemplate"
+        $project.languageDirections = $templateObject.languageDirections
+    }
+    
+    if ($restrictFileDownloadSpecified)
     {
-        $fConfig = Get-ResourceByNameOrId $accessKey $fileProcessingConfiguration "FileProcessingConfiguration"
-        $project.fileProcessingConfiguration = @{
-            "id" = $fConfig.Id
-            "strategy" = "copy"
-        }
+        $project.forceOnline = $restrictFileDownload.ToString().ToLower();
     }
-
-    if ($workflow)
-    {
-        $workflowResponse = Get-ResourceByNameOrId $accessKey $workflow "Workflow"
-        $project.workflow = @{
-            "id" = $workflowResponse.Id 
-            "strategy" = "copy"
-        }
-    }
-
-    if ($pricingModel)
-    {
-        $pricingModelResponse = Get-ResourceByNameOrId $accessKey $pricingModel "PricingModel"
-        $project.pricingModel = @{
-            "id" = $pricingModelResponse.Id
-            "strategy" = "copy"
-        }
-    }
-
-    if ($scheduletemplate)
-    {
-        $scheduleTemplateResponse = Get-ResourceByNameOrId $accessKey $scheduletemplate "ScheduleTemplate"
-        $project.scheduleTemplate = @{
-            "id" = $scheduleTemplateResponse.Id 
-            "strategy" = "copy"
-        }
-    }
-
-    $project.forceOnline = $restrictFileDownload.ToLower();
-
+    
     if ($includeSettings)
     {
         $projectsettings = @{
@@ -281,6 +262,79 @@ function Get-ProjectBody
     }
 
     return $project
+}
+
+function Get-ProjectCreationRequest 
+{
+    param (
+        [psobject] $accessKey,
+        [psobject] $project
+    )
+
+    $json = $project | ConvertTo-Json -Depth 5;
+    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+    $headers.Add("X-LC-Tenant", $accessKey.tenant)
+    $headers.Add("Content-Type", "application/json")
+    $headers.Add("Accept", "application/json")
+    $headers.Add("Authorization", $accessKey.token)
+
+    try 
+    {
+        return Invoke-RestMethod 'https://lc-api.sdl.com/public-api/v1/projects' -Method 'POST' -Headers $headers -Body $json;
+    }
+    catch {
+        Write-Host "$_"
+    }
+}
+
+function Get-And-AssignProjectManagers
+{
+    param (
+        [psobject] $accessKey,
+        [psobject] $project,
+        [string[]] $userManagers,
+        [string[]] $groupsManagers
+    )
+
+    $managers = @();
+    if ($userManagers)
+    {
+        $users = Get-Items -accessKey $accessKey -resourceType "User";
+        
+        foreach ($manager in $userManagers) {
+            $matchingUser = $users | Where-Object { 
+                $_.id -eq $manager -or ($_.email -and $_.email -eq $manager) 
+            }
+            
+            foreach ($user in $matchingUser) {
+                $managers += @{
+                    "id"   = $user.id
+                    "type" = "user"
+                }
+            }
+        }
+    }
+
+    if ($groupManagers) {
+        $groups = Get-Items -accessKey $accessKey -resourceType "Group"
+    
+        foreach ($manager in $groupManagers) {
+            $matchingGroup = $groups | Where-Object {
+                $_.id -eq $manager -or $_.name -eq $manager
+            }
+            
+            foreach ($group in $matchingGroup) {
+                $managers += @{
+                    "id"   = $group.id
+                    "type" = "group"
+                }
+            }
+        }
+    }
+
+    if ($managers.Count -gt 0) {
+        $project["projectManagers"] = @($managers)
+    }
 }
 
 function Get-LanguageDirections 
@@ -306,6 +360,27 @@ function Get-LanguageDirections
     return $result;
 }
 
+function Get-And-AssignResource
+{
+    param (
+        [psobject] $accessKey,
+        [psobject] $project,
+        [string] $resourceName,
+        [string] $resourceType,
+        [String] $propertyName
+    )
+
+    if ($resourceName)
+    {
+        $resource = Get-ResourceByNameOrId $accessKey $resourceName $resourceType
+        $project[$propertyName] = @{
+            "id" = $resource.Id
+            "strategy" = "copy"
+        }
+
+    }
+}
+
 function Get-ResourceByNameOrId
 {
     param (
@@ -314,49 +389,39 @@ function Get-ResourceByNameOrId
         [String] $resourceType
     )
 
-    switch ($resourceType) {
-        "Customer" { 
-            $items = Get-AllCustomers $accessKey;
-         }
-
-         "ProjectTemplate"
-         {
-            $items = Get-AllProjectTemplates $accessKey
-         }
-
-         "TranslationEngine"
-         {
-            $items = Get-AllTranslationEngines $accessKey
-         }
-
-         "FileProcessingConfiguration"
-         {
-            $items = Get-AllFileTypeConfigurations $accessKey
-         }
-
-         "Workflow"
-         {
-            $items = Get-AllWorkflows $accessKey
-         }
-
-         "PricingModel"
-         {
-            $items = Get-AllPricingModels $accessKey
-         }
-
-         "ScheduleTemplate"
-         {
-            $items = Get-AllScheduleTemplates $accessKey
-         }
-        Default { return; }
-    }
-
+    $items = Get-Items $accessKey $resourceType;
     foreach ($item in $items)
     {
         if ($item.Name -eq $resourceIdOrName -or $item.Id -eq $resourceIdOrName)
         {
             return $item;
         }
+    }
+}
+
+function Get-Items 
+{
+    param (
+        [psobject] $accessKey,
+        [String] $resourceType
+    )
+
+    $resourceFunctions =  @{
+        "Customer"                 = "Get-AllCustomers"
+        "ProjectTemplate"          = "Get-AllProjectTemplates"
+        "TranslationEngine"        = "Get-AllTranslationEngines"
+        "FileProcessingConfiguration" = "Get-AllFileTypeConfigurations"
+        "Workflow"                 = "Get-AllWorkflows"
+        "PricingModel"             = "Get-AllPricingModels"
+        "ScheduleTemplate"         = "Get-AllScheduleTemplates"
+        "User"                     = "Get-AllUsers"
+        "Group"                    = "Get-AllGroups"
+        "Location"                 = "Get-AllLocations"
+    }
+
+    if ($resourceFunctions.ContainsKey($resourceType)) 
+    {
+        return & $resourceFunctions[$resourceType] $accessKey
     }
 }
 

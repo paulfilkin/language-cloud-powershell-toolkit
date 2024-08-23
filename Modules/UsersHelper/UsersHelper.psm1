@@ -4,8 +4,7 @@ function Get-AllUsers
         [psobject] $accessKey
     )
 
-    $usersEndpoint = 'https://lc-api.sdl.com/public-api/v1/users?fields=id,email,firstName,lastName,location';
-    return Get-AllItems $accessKey $usersEndpoint;
+    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/users?fields=id,email,firstName,lastName,location';
 }
 
 function Get-AllGroups
@@ -14,8 +13,7 @@ function Get-AllGroups
         [psobject] $accessKey
     )
 
-    $groupsEndpoint = 'https://lc-api.sdl.com/public-api/v1/groups?fields=id,name,description,location';
-    return Get-AllItems $accessKey $groupsEndpoint;
+    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/groups?fields=id,name,description,location';
 }
 
 function Get-AllItems
@@ -40,5 +38,5 @@ function Get-AllItems
     }
 }
 
-Export-ModuleMember Get-AllUsers; # maybe find a way to change the fields given
+Export-ModuleMember Get-AllUsers; 
 Export-ModuleMember Get-AllGroups;
