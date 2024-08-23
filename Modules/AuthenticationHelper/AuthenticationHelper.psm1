@@ -38,3 +38,5 @@ function Get-AccessKey
         Write-host "$_"
     }
 }
+
+Export-ModuleMember Get-AccessKey;

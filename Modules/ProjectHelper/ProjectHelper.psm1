@@ -220,7 +220,6 @@ function Get-ProjectBody
 
     if ($customerName)
     {
-        Write-Host "I was called";
         $customerObject = Get-ResourceByNameOrId -accessKey $accessKey -resourceIdOrName $customerName -resourceType "Customer"
         $project.location = $customerObject.location.id
     }
