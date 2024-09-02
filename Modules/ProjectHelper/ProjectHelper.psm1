@@ -1,3 +1,101 @@
+<#
+.SYNOPSIS
+Creates a new project with specified parameters and uploads source files.
+
+.DESCRIPTION
+The `New-Project` function creates a new project using the provided access key and project details. 
+The project can be configured with various optional parameters such as source and target languages, customer details, 
+location, project template, and more. The function also handles the uploading of source files and initiates the project workflow.
+
+.PARAMETER accessKey
+The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+
+.PARAMETER projectName
+The name of the project to be created. This is a mandatory parameter.
+
+.PARAMETER projectDueDate
+The due date for the project in a string format. This is a mandatory parameter.
+
+.PARAMETER filesPath
+The path to the directory containing the source files to be uploaded for the project. This is a mandatory parameter.
+
+.PARAMETER referenceFileNames
+An optional array of reference file names to be included in the project. These files should be located in the directory specified by `filesPath`.
+
+.PARAMETER sourceLanguage
+The source language code of the project.
+
+.PARAMETER targetLanguages
+An optional array of target language codes for the project. 
+
+.PARAMETER customer
+The customer associated with the project. This can be either the name or the ID of the customer.
+
+.PARAMETER location
+The location where the project will be managed. This can be either the name or the ID of the location.
+
+.PARAMETER description
+An optional description of the project.
+
+.PARAMETER projectTemplate
+An optional project template to be used for the project. If a template is provided, most other parameters can be omitted as the template will define them.
+
+.PARAMETER translationEngine
+The translation engine to be used for the project. This can be either the name or the ID of the engine.
+
+.PARAMETER fileProcessingConfiguration
+An optional file processing configuration to be used for the project. This can be either the name or the ID of the configuration.
+
+.PARAMETER workflow
+An optional workflow to be applied to the project. This can be either the name or the ID of the workflow.
+
+.PARAMETER pricingModel
+An optional pricing model for the project. This can be either the name or the ID of the model.
+
+.PARAMETER restrictFileDownloadSpecified
+A switch that, when specified, allows the user to control whether file downloads are restricted.
+
+.PARAMETER restrictFileDownload
+A boolean value indicating whether file downloads should be restricted. Default is `$false`.
+
+.PARAMETER scheduletemplate
+An optional schedule template to be used for the project. This can be either the name or the ID of the template.
+
+.PARAMETER userManagers
+An optional array of user managers who will oversee the project.
+
+.PARAMETER groupsManager
+An optional array of groups that will manage the project.
+
+.PARAMETER includeSettings
+A boolean value indicating whether to include additional settings in the project configuration. Default is `$false`.
+
+.PARAMETER configCompleteDays
+The number of days after which the project is considered complete. Default is `90` days.
+
+.PARAMETER configArchiveDays
+The number of days after which the project is archived. Default is `90` days.
+
+.PARAMETER configReminderDays
+The number of days before a reminder is sent out. Default is `7` days.
+
+.EXAMPLE
+New-Project -accessKey $accessKey -projectName "New Localization Project" -projectDueDate "2024-12-31" -filesPath "C:\ProjectFiles" `
+            -sourceLanguage "en-us" -targetLanguages @("fr-FR", "de-DE") -location "LocationName" -fileProcessingConfiguration "File Processing Configuration Name"
+
+This example creates a new project with the specified source and target languages, location and file type configuration, and uploads the source files from the specified path.
+
+.EXAMPLE
+New-Project -accessKey $accessKey -projectName "Template Based Project" -projectDueDate "2024-12-31" `
+            -filesPath "C:\ProjectFiles" -projectTemplate "StandardTemplate"
+
+This example creates a new project using a predefined project template. Other parameters such as languages and workflow are automatically set based on the template.
+
+.NOTES
+Either `location` or `customer` must be provided to determine where the project will be managed. If `projectTemplate` is provided, 
+most other parameters can be omitted as they will be automatically configured based on the template.
+
+#>
 function New-Project 
 {
     param (
