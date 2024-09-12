@@ -1,3 +1,5 @@
+$baseUri = "https://lc-api.sdl.com/public-api/v1"
+
 <#
 .SYNOPSIS
 Retrieves all users available in the system.
@@ -21,10 +23,52 @@ This function makes a GET request to the users API endpoint and returns a collec
 function Get-AllUsers 
 {
     param (
-        [psobject] $accessKey
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $locationId,
+        [bool] $includeSubFolders = $false,
+        [string] $sortProperty
     )
 
-    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/users?fields=id,email,firstName,lastName,location';
+    $uri = "$baseUri/users";
+    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
+    $filter = "?location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
+    $uriFields = "&fields=id,email,firstName,lastName,location";
+    $uri = $uri + $filter + $uriFields
+    return Get-AllItems -accessKey $accessKey -uri $uri;
+}
+
+function  Get-User {
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $userId,
+        [string] $userEmail,
+        [string] $userFirstName,
+        [string] $userLastName
+    )
+
+    $uri = "$baseUri/users"
+
+    if ($userId)
+    {
+        $uri = "$baseUri/$userId"
+        $headers = Get-RequestHeader -accessKey $accessKey
+        return Invoke-RestMethod -uri $uri -Headers $headers
+    }
+
+    $users = Get-AllItems -accessKey $accessKey -uri $uri;
+    if ($userEmail)
+    {
+        return $users | Where-Object {$_.email -eq $userEmail } | Select-Object -First 1;
+    }
+    elseif ($userFirstName -and $userLastName)
+    {
+        return $users | Where-Object {$_.firstName -eq $userFirstName -and $_.lastName -eq $userLastName} | Select-Object -First 1;
+    }
+
 }
 
 <#
@@ -78,5 +122,36 @@ function Get-AllItems
     }
 }
 
+function Get-LocationStrategy 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [Bool] $includeSubFolders
+    )
+
+    if ($includeSubFolders)
+    {
+        return "lineage"
+    }
+
+    return "location"
+}
+
+function Get-RequestHeader
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey
+    )
+    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+    $headers.Add("X-LC-Tenant", $accessKey.tenant)
+    $headers.Add("Accept", "application/json")
+    $headers.Add("Content-Type", "application/json")
+    $headers.Add("Authorization", $accessKey.token)
+
+    return $headers;
+}
+
 Export-ModuleMember Get-AllUsers; 
+Export-ModuleMember Get-User;
 Export-ModuleMember Get-AllGroups;

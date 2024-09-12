@@ -321,7 +321,7 @@ function Get-ProjectBody
         $customerObject = Get-ResourceByNameOrId -accessKey $accessKey -resourceIdOrName $customerName -resourceType "Customer"
         $project.location = $customerObject.location.id
     }
-    elseif ($location)
+    elseif ($location) 
     {
         $locationObject = Get-ResourceByNameOrId -accessKey $accessKey -resourceIdOrName $location -resourceType "Location"
         $project.location = $locationObject.id;
