@@ -346,7 +346,10 @@ function Update-Customer
         [string] $name,
         [string] $ragStatus,
         [string] $folderVisibility,
-        [string[]] $customFieldIdsOrNames
+        [string[]] $customFieldIdsOrNames,
+
+        [string] $userEmail,
+        [string] $userId
     )
 
     $customer = Get-Customer -accessKey $accessKey -customerId $customerId -customerName $customerName
@@ -416,6 +419,19 @@ function Update-Customer
         }
 
         $body.customFieldDefinitions = @($fieldDefinitions);
+    }
+
+    if ($userEmail -or $userId)
+    {
+        $user = Get-User -accessKey $accessKey -userId $userId -userEmail $userEmail;
+        if ($user)
+        {
+            $body.keyContactId = $user.Id
+        }
+        else 
+        {
+            return;
+        }
     }
 
     $json = $body | ConvertTo-Json -Depth 3;
