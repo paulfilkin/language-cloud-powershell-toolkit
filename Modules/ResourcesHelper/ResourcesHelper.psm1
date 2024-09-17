@@ -25,12 +25,18 @@ function Get-AllProjectTemplates
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
 
+        [string] $locationId,
+        [string] $locationName,
         [string] $name,
-        [psobject] $location,
-        [string] $locationStrategy
+        [string] $locationStrategy = "location"
     )
 
-    $uri = Get-StringUri -baseUri "$baseUri/project-templates" `
+    if ($locationId -or $locationName)
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName;
+    }
+
+    $uri = Get-StringUri -root "$baseUri/project-templates" `
                          -name $name -location $location `
                          -locationStrategy $locationStrategy `
                          -fields "&fields=id,name,description,languageDirections,location"
@@ -49,10 +55,9 @@ function Get-ProjectTemplate
     )
 
     return Get-Item -accessKey $accessKey -uri "$baseUri/project-templates" -uriQuery "?fields=id,name,description,languageDirections,location" `
-                    -id $projectTemplateId -name $projectTemplateName;
+                    -id $projectTemplateId -name $projectTemplateName -propertyName "Project template";
 }
 
-# Left to implement
 function New-ProjectTemplate 
 {
     param (
@@ -65,20 +70,48 @@ function New-ProjectTemplate
         [string] $locationId,
         [string] $locationName,
 
-        [string] $fileTypeConfigurationId, # same with the other..
-        [string] $fileTypeConfigurationName,
+        [Parameter(Mandatory=$true)]
+        [string] $fileTypeConfigurationIdOrName,
 
-        [string[]] $userManagersIdsOrNames,
-        [string[]] $groupManagersIdsOrNames,
+        [string] $sourceLanguage,
+        [string[]] $targetLanguages,
+        [psobject] $languagePairs,
+        [string[]] $userManagerIdsOrNames,
+        [string[]] $customFieldIdsOrNames,
+        [string] $translationEngineIdOrName,
+        [string] $pricingModelIdOrName,
+        [string] $workflowIdOrName,
+        [string] $tqaIdOrName,
 
-        [string] $scheduleTemplateId,
-        [string] $scheduleTemplateName 
+        [string] $fileTypeConfigurationStrategy = "copy",
+        [string] $translationEngineStrategy = "copy",
+        [string] $pricingModelStrategy = "copy",
+        [string] $workflowStrategy = "copy",
+        [string] $tqaStrategy = "copy",
+        [bool] $restrictFileDownload = $false,
+        [bool] $customerPortalVisibility = $true,
+        [int] $completeDays = 90,
+        [int] $archiveDays = 90,
+        [int] $archiveReminderDays = 7,
+        [string] $description
     )
 
     $uri = "$baseUri/project-templates"
     $headers = Get-RequestHeader -accessKey $accessKey
     $body = [ordered]@{
         name = $projectTemplateName
+        description = $description
+        settings = [ordered]@{
+            general = [ordered] @{
+                forceOnline = $restrictFileDownload
+                customerPortalVisibility = $customerPortalVisibility
+                completeConfiguration = [ordered] @{
+                    completeDays = $completeDays 
+                    archiveDays = $archiveDays 
+                    archiveReminderDays = $archiveReminderDays
+                }
+            }
+        }
     }
 
     $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -86,66 +119,166 @@ function New-ProjectTemplate
     {
         $body.location = $location.Id
     }
-
-    $fileTypeConfig = Get-FileTypeConfiguration -accessKey $accessKey -fileTypeId $fileTypeConfigurationId -fileTypeName $fileTypeConfigurationName;
-    if ($fileTypeConfig)
+    else 
     {
-        $body.fileProcessingConfiguration = @{
-            id = $fileTypeConfig.Id 
-            strategy = "use" # we might need to change 
+        return;
+    }
+
+    $fileTypeConfiguration = Get-AllFileTypeConfigurations -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                        | Where-Object {$_.Id -eq $fileTypeConfigurationIdOrName -or $_.Name -eq $fileTypeConfigurationIdOrName } `
+                        | Select-Object -First 1;
+
+    if ($null -eq $fileTypeConfiguration)
+    {
+        Write-Host "File Type configuration does not exist or it is not related to the location $($location.Name)" -ForegroundColor Green;
+        return
+    }
+    $body.fileProcessingConfiguration = @{
+        id = $fileTypeConfiguration.Id
+        strategy = $fileTypeConfigurationStrategy
+    }
+
+    if ($userManagerIdsOrNames) # add later the bloodline part..
+    {
+    }
+    if ($projectManagerIdsOrNames)
+    {
+    }
+
+    if (($sourceLanguage -and $targetLanguages) -or $languagePairs)
+    {
+        $languageDirections = Get-LanguageDirections -sourceLanguage $sourceLanguage -targetLanguages $targetLanguages -languagePairs $languagePairs;
+        if ($null -eq $languageDirections)  
+        {
+            Write-Host "Invalid languages" -ForegroundColor;
+            return;
+        }
+
+        $body.languageDirections = @($languageDirections);
+    }
+
+    if ($translationEngineIdOrName)
+    {
+        $translationEngine = Get-AllTranslationEngines -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                            | Where-Object {$_.Id -eq $translationEngineIdOrName -or $_.Name -eq $translationEngineIdOrName} `
+                            | Select-Object -First 1;
+        
+        if ($null -eq $translationEngine)
+        {
+            Write-Host "Translation Engine not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.translationEngine = [ordered] @{
+            id = $translationEngine.Id
+            strategy = $translationEngineStrategy
         }
     }
 
-    $projectManagers = @();
-    if ($userManagersIdsOrNames)
+    if ($pricingModelIdOrName)
     {
-        $users = Get-AllUsers -accessKey $accessKey | Where-Object {$_.email -in $userManagersIdsOrNames -or $_.Id -in $userManagersIdsOrNames };
-        
-        if ($users)
+        $pricingModel = Get-AllPricingModels -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                        | Where-Object {$_.id -eq $pricingModelIdOrName -or $_.name -eq $pricingModelIdOrName } `
+                        | Select-Object -First 1;
+
+        if ($null -eq $pricingModel)
         {
-            $users = $users | Select-Object @{Name="id";Expression={$_.Id}}, @{Name="type";Expression={"user"}}
+            Write-Host "Pricing Model not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
         }
-        
-        $projectManagers += $users;
+
+        $body.pricingModel = [ordered] @{
+            id = $pricingModel.Id
+            strategy = $pricingModelStrategy
+        }
     }
-    
-    if ($scheduleTemplateId -or $scheduleTemplateName)
+
+    if ($workflowIdOrName)
     {
-        $scheduleTemplate = Get-ScheduleTemplate -accessKey $accessKey -scheduleTemplateId $scheduleTemplateId -scheduleTemplateName $scheduleTemplateName;
-        if ($scheduleTemplate)
+        $workflow = Get-AllWorkflows -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                    | Where-Object {$_.Id -eq $workflowIdOrName -or $_.Name -eq $workflowIdOrName } `
+                    | Select-Object -First 1;
+
+        if ($null -eq $workflow)
         {
-            $body.scheduleTemplate = @{
-                id = $scheduleTemplate.Id
-                strategy = "copy"
+            Write-Host "Workflow not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.worfklow = [ordered] @{
+            id = $workflow.Id 
+            strategy = $workflowStrategy
+        }
+    }
+
+    if ($tqaIdOrName)
+    {
+        $tqa = Get-AllTranslationQualityAssessments -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                    | Where-Object {$_.id -eq $tqaIdOrName -or $_.name -eq $tqaIdOrName } `
+                    | Select-Object -First 1;
+
+        if ($null -eq $tqa)
+        {
+            Write-Host "Translation Quality Assessment not found or not related to the location $($location.Name)" -ForegroundColor Green;
+        }
+
+        $body.settings.qualityManagement = @{
+            qualityManagement = @{
+                tqaProfile = @{
+                    id = $tqa.Id 
+                    strategy = $tqaStrategy
+                }
             }
         }
     }
 
-    if ($groupManagersIdsOrNames)
+    if ($customFieldIdsOrNames)
     {
-        $groups = Get-AllGroups -accessKey $accessKey | Where-Object {$_.Id -in $groupManagersIdsOrNames -or $_.Name -in $groupManagersIdsOrNames}
-
-        if ($groups)
-        {
-            $groups = $groups | Select-Object @{Name = "id";Expression={$_.Id}}, @{Name="type";Expression={"group"}};
+        $customFields = Get-AllCustomFields -accessKey $accessKey -locationId $customer.Location.Id -locationStrategy "bloodline" `
+                            | Where-Object {$_.Id -in $customFieldIdsOrNames -or $_.Name -in $customFieldIdsOrNames } `
+                            | Where-Object {$_.ResourceType -eq "Project"} 
+        
+        if ($null -eq $customFields -or
+            $customFields.Count -ne $customFieldIdsOrNames.Count)
+        {   
+            $missingFields = $customFieldIdsOrNames | Where-Object { $_ -notin $customFields.Id -and $_ -notin $customFields.Name }
+            Write-Host "The following custom fields were not found: $missingFields" -ForegroundColor Green;
+            return;
         }
 
-        $projectManagers += $groups;
+        $fieldDefinitions = @();
+        foreach ($customField in $customFields)
+        {
+            $fieldDefinition = [ordered] @{
+            };
+            if ($customField.defaultValue)
+            {
+                $fieldDefinition.key = $customField.key
+                $fieldDefinition.value = $customField.defaultValue;
+            }
+            else 
+            {
+                Write-Host "Enter the key for Custom Field $($customField.Name) of type $($customField.Type)" -ForegroundColor Yellow
+                if ($customField.pickListOptions)
+                {
+                    foreach ($pickList in $customField.pickListOptions)
+                    {
+                        Write-Host $pickList -ForegroundColor DarkYellow;
+                    }
+                }
+
+                $fieldDefinition.key = $customField.key;
+                $fieldDefinition.value = Read-Host 
+            }
+
+            $fieldDefinitions += $fieldDefinition;
+        }
+
+        $body.customFields = @($fieldDefinitions);
     }
 
-    if ($projectManagers)
-    {
-        $body.projectManagers = @($projectManagers);
-    }
-    
-    $json = $body | ConvertTo-Json -Depth 5;
-    return $json;
-    try {
-        Invoke-RestMethod -Headers $headers -Uri $uri -Body $json -Method Post
-    }
-    catch {
-        Write-Host "$_";
-    }
+    $json = $body | ConvertTo-Json -Depth 100;
+    Invoke-RestMethod -Uri $uri -Headers $headers -Method Post -Body $json;
 }
 
 function Remove-ProjectTemplate
@@ -158,14 +291,15 @@ function Remove-ProjectTemplate
         [string] $projectTemplateName
     )
 
-    $projectTemplate = Get-Item -accessKey $accessKey -uri "$baseUri/project-templates" -uriQuery "?fields=id,name,description,languageDirections,location" `
-                                            -id $projectTemplateId -name $projectTemplateName;
+    $projectTemplate = Get-ProjectTemplate -accessKey $accessKey -id $projectTemplateId -name $projectTemplateName;
 
     if ($projectTemplate)
     {
         $uri = "$baseUri/project-templates/$($projectTemplate.Id)"
         $headers = Get-RequestHeader -accessKey $accessKey
-        Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Delete }
+        Invoke-SafeMethod { 
+                Invoke-RestMethod -Uri $uri -Headers $headers -Method Delete;
+                Write-Host "Project Template removed" -ForegroundColor Green}
     }
 }
 
@@ -192,9 +326,24 @@ function Get-AllTranslationEngines
 {
     param (
         [Parameter(Mandatory=$true)]
-        [psobject] $accessKey
+        [psobject] $accessKey,
+
+        [string] $locationId,
+        [string] $locationName,
+        [string] $locationStrategy = "location",
+        [string] $sortProperty
     )
-    return Get-AllItems $accessKey "$baseUri/translation-engines?fields=name,description,location,definition"
+
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/translation-engines" `
+                         -location $location -fields "fields=name,description,location,definition"`
+                         -locationStrategy $locationStrategy -sort $sortProperty;
+
+    return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
 function Get-TranslationEngine 
@@ -466,6 +615,7 @@ function Get-AllFileTypeConfigurations
         [psobject] $accessKey,
 
         [string] $locationId,
+        [string] $locationName,
         [string] $locationStrategy = "location",
         [string] $sortProperty
     )
@@ -479,13 +629,6 @@ function Get-AllFileTypeConfigurations
                         -location $location -fields "fields=id,name,location" `
                         -locationStrategy $locationStrategy -sort $sortProperty;
 
-    return Get-AllItems -accessKey $accessKey -uri $uri;
-
-    $uri = "$baseUri/file-processing-configurations";
-    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
-    $filter = "?location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
-    $uriFields = "&fields=id,name,location";
-    $uri = $uri + $filter + $uriFields
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
@@ -527,15 +670,20 @@ function Get-AllWorkflows
         [psobject] $accessKey,
 
         [string] $locationId,
-        [bool] $includeSubFolders = $false,
+        [string] $locationName,
+        [string] $locationStrategy = "location",
         [string] $sortProperty
     )
 
-    $uri = "$baseUri/workflows";
-    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
-    $filter = "?location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
-    $uriFields = "&fields=id,name,description,location,workflowTemplate,languageDirections";
-    $uri = $uri + $filter + $uriFields
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/workflows" `
+                         -location $location -fields "fields=id,name,description,location,workflowTemplate,languageDirections"`
+                         -locationStrategy $locationStrategy -sort $sortProperty;
+
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
@@ -577,18 +725,23 @@ function Get-AllPricingModels
         [psobject] $accessKey,
 
         [string] $locationId,
-        [bool] $includeSubFolders = $false,
-        [string] $sortProperty
+        [string] $locationName,
+        [string] $locationStrategy = "location"
     )
 
-    $uri = "$baseUri/pricing-models"
-    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
-    $filter = "?location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
-    $uriFields = "&fields=id,name,description,currencyCode,location"
-    $uri = $uri + $filter + $uriFields;
-    return Get-AllItems -accessKey $accessKey -uri $uri
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/pricing-models" `
+                         -location $location -fields "fields=id,name,description,currencyCode,location,languageDirectionPricing"`
+                         -locationStrategy $locationStrategy;
+
+    return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+# Might need to remove this one..
 function  Get-PricingModel {
     param (
         [Parameter(Mandatory=$true)]
@@ -750,8 +903,7 @@ function Get-AllTranslationMemories
 
         [string] $locationId,
         [string] $locationName,
-        [string] $locationStrategy = "location",
-        [string] $sortProperty
+        [string] $locationStrategy = "location"
     )
 
     if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
@@ -761,7 +913,7 @@ function Get-AllTranslationMemories
 
     $uri = Get-StringUri -root "$baseUri/translation-memory" `
                          -location $location `
-                         -locationStrategy $locationStrategy -sort $sortProperty;
+                         -locationStrategy $locationStrategy;
 
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
@@ -1181,14 +1333,20 @@ function Get-AllTranslationQualityAssessments
         [psobject] $accessKey,
 
         [string] $locationId,
-        [bool] $includeSubFolders = $false,
+        [string] $locationName,
+        [string] $locationStrategy = "location",
         [string] $sortProperty
     )
 
-    $uri = "$baseUri/tqa-profiles"
-    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
-    $filter = "?location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
-    $uri = $uri + $filter 
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/tqa-profiles" `
+                         -location $location `
+                         -locationStrategy $locationStrategy -sort $sortProperty;
+
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
@@ -1438,7 +1596,6 @@ function Get-StringUri
     )
 
     $filter = Get-FilterString -name $name -location $location -locationStrategy $locationStrategy -sort $sort
-
     if ($filter -and $fields)
     {
         return $root + "?" + $filter + "&" + $($fields);
