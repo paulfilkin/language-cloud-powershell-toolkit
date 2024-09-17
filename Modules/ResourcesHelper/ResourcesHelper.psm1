@@ -26,18 +26,16 @@ function Get-AllProjectTemplates
         [psobject] $accessKey,
 
         [string] $name,
-        [string] $locationId,
-        [bool] $includeSubFolders = $false,
-        [string] $sortProperty
+        [psobject] $location,
+        [string] $locationStrategy
     )
 
-    
-    $uri = "$baseUri/project-templates";
-    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
-    $filter = "?name=$name&location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
-    $uriFields = "&fields=id,name,description,languageDirections,location";
-    $uri = $uri + $filter + $uriFields
-    return Get-AllItems -accessKey $accessKey -uri $uri;
+    $uri = Get-StringUri -baseUri "$baseUri/project-templates" `
+                         -name $name -location $location `
+                         -locationStrategy $locationStrategy `
+                         -fields "&fields=id,name,description,languageDirections,location"
+
+    Get-AllItems -accessKey $accessKey -uri $uri
 }
 
 function Get-ProjectTemplate 
@@ -50,37 +48,106 @@ function Get-ProjectTemplate
         [String] $projectTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/project-templates" -uriQuery "?fields=id,name,description,languageDirections,location" -id $projectTemplateId -name $projectTemplateName;
+    return Get-Item -accessKey $accessKey -uri "$baseUri/project-templates" -uriQuery "?fields=id,name,description,languageDirections,location" `
+                    -id $projectTemplateId -name $projectTemplateName;
 }
 
 # Left to implement
 function New-ProjectTemplate 
 {
     param (
-        [Paramter(Mandatory=$true)]
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
 
         [Parameter(Mandatory=$true)]
         [string] $projectTemplateName,
 
-        [psobject] $location,
         [string] $locationId,
         [string] $locationName,
 
-        [psobject] $fileTypeConfiguration,
         [string] $fileTypeConfigurationId,
-        [string] $fileTypeConfigurationName
+        [string] $fileTypeConfigurationName,
+
+        # Up until here there are the mandatory parameters
+
+        [string[]] $userManagersIdsOrNames,
+        [string[]] $groupManagersIdsOrNames,
+
+        [string] $scheduleTemplateId,
+        [string] $scheduleTemplateName 
     )
 
     $uri = "$baseUri/project-templates"
-    $headers = Get-RequestHeader -accessKey $accessKey;
+    $headers = Get-RequestHeader -accessKey $accessKey
     $body = [ordered]@{
         name = $projectTemplateName
     }
 
-    # Get-And-AssignResource -accessKey $accessKey -projectTemplate $body -resourceName
+    $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    if ($location)
+    {
+        $body.location = $location.Id
+    }
 
+    $fileTypeConfig = Get-FileTypeConfiguration -accessKey $accessKey -fileTypeId $fileTypeConfigurationId -fileTypeName $fileTypeConfigurationName;
+    if ($fileTypeConfig)
+    {
+        $body.fileProcessingConfiguration = @{
+            id = $fileTypeConfig.Id 
+            strategy = "use" # we might need to change 
+        }
+    }
+
+    $projectManagers = @();
+    if ($userManagersIdsOrNames)
+    {
+        $users = Get-AllUsers -accessKey $accessKey | Where-Object {$_.email -in $userManagersIdsOrNames -or $_.Id -in $userManagersIdsOrNames };
+        
+        if ($users)
+        {
+            $users = $users | Select-Object @{Name="id";Expression={$_.Id}}, @{Name="type";Expression={"user"}}
+        }
+        
+        $projectManagers += $users;
+    }
     
+    if ($scheduleTemplateId -or $scheduleTemplateName)
+    {
+        $scheduleTemplate = Get-ScheduleTemplate -accessKey $accessKey -scheduleTemplateId $scheduleTemplateId -scheduleTemplateName $scheduleTemplateName;
+        if ($scheduleTemplate)
+        {
+            $body.scheduleTemplate = @{
+                id = $scheduleTemplate.Id
+                strategy = "copy"
+            }
+        }
+    }
+
+    if ($groupManagersIdsOrNames)
+    {
+        $groups = Get-AllGroups -accessKey $accessKey | Where-Object {$_.Id -in $groupManagersIdsOrNames -or $_.Name -in $groupManagersIdsOrNames}
+
+        if ($groups)
+        {
+            $groups = $groups | Select-Object @{Name = "id";Expression={$_.Id}}, @{Name="type";Expression={"group"}};
+        }
+
+        $projectManagers += $groups;
+    }
+
+    if ($projectManagers)
+    {
+        $body.projectManagers = @($projectManagers);
+    }
+    
+    $json = $body | ConvertTo-Json -Depth 5;
+    return $json;
+    try {
+        Invoke-RestMethod -Headers $headers -Uri $uri -Body $json -Method Post
+    }
+    catch {
+        Write-Host "$_";
+    }
 }
 
 function Remove-ProjectTemplate
@@ -89,23 +156,19 @@ function Remove-ProjectTemplate
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
 
-        [Parameter(Mandatory=$true)]
-        [string] $projectTemplateIdOrName
+        [string] $projectTemplateId,
+        [string] $projectTemplateName
     )
 
-    $projectTemplates = Get-AllProjectTemplates $accessKey;
-    $projectTemplate = $projectTEmplates | Where-Object {$_.Id -eq $projectTemplateIdOrName -or $_.Name -eq $projectTemplateIdOrName} | Select-Object -First 1;
+    $projectTemplate = Get-Item -accessKey $accessKey -uri "$baseUri/project-templates" -uriQuery "?fields=id,name,description,languageDirections,location" `
+                                            -id $projectTemplateId -name $projectTemplateName;
 
     if ($projectTemplate)
     {
-        $headers = Get-RequestHeader -accessKey $accessKey;
-
-        $uri = "$baseUri/project-templates/$($projectTemplate.Id)";
-
-        return Invoke-RestMethod -uri $uri -Method Delete -Headers $headers;
+        $uri = "$baseUri/project-templates/$($projectTemplate.Id)"
+        $headers = Get-RequestHeader -accessKey $accessKey
+        Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Delete }
     }
-
-    Write-Host "Project Template $projectTemplateIdOrName does not exist" -ForegroundColor Green;
 }
 
 <#
@@ -293,9 +356,20 @@ function Get-AllFileTypeConfigurations
         [psobject] $accessKey,
 
         [string] $locationId,
-        [bool] $includeSubFolders = $false,
+        [string] $locationStrategy = "location",
         [string] $sortProperty
     )
+
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/file-processing-configurations" `
+                        -location $location -fields "fields=id,name,location" `
+                        -locationStrategy $locationStrategy -sort $sortProperty;
+
+    return Get-AllItems -accessKey $accessKey -uri $uri;
 
     $uri = "$baseUri/file-processing-configurations";
     $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
@@ -308,7 +382,7 @@ function Get-AllFileTypeConfigurations
 function Get-FileTypeConfiguration 
 {
     param (
-        [Paramter(Mandatory=$true)]
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
 
         [string] $fileTypeId,
@@ -316,7 +390,6 @@ function Get-FileTypeConfiguration
     )
 
     return Get-Item -accessKey $accessKey -uri "$baseUri/file-processing-configurations" -uriQuery "?fields=id,name,location" -id $fileTypeId -name $fileTypeName;
-
 }
 
 <#
@@ -416,7 +489,6 @@ function  Get-PricingModel {
     )
 
     return Get-Item -accessKey $accessKey -uri "$baseUri/pricing-models" -uriQuery "?fields=id,name,description,currencyCode,location" -id $pricingModelId -name $pricingModelName
-    
 }
 
 <#
@@ -562,14 +634,20 @@ function Get-AllTranslationMemories
         [psobject] $accessKey,
 
         [string] $locationId,
-        [bool] $includeSubFolders = $false,
+        [string] $locationName,
+        [string] $locationStrategy = "location",
         [string] $sortProperty
     )
-    $uri = "$baseUri/translation-memory"
-    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders
-    $filter = "?location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
 
-    $uri = $uri + $filter;
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/translation-memory" `
+                         -location $location `
+                         -locationStrategy $locationStrategy -sort $sortProperty;
+
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
@@ -583,7 +661,98 @@ function Get-TranslationMemory
         [string] $translationMemoryName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/translation-memory" -id $translationMemoryId -name $translationMemoryName;
+    return Get-Item -accessKey $accessKey -uri "$baseUri/translation-memory" -id $translationMemoryId -name $translationMemoryName -propertyName "Translation memory";
+}
+
+function New-TranslationMemory 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $name,
+
+        [Parameter(Mandatory=$true)]
+        [string] $languageProcessingIdOrName,
+
+        [Parameter(Mandatory=$true)]
+        [string] $fieldTemplateIdOrName,
+        
+        [string] $locationId,  
+        [string] $locationName,
+        
+        [string] $sourceLanguage,
+        [string[]] $targetLanguages,
+        [psobject[]] $languagePairs,
+        
+        [string] $copyRight,
+        [string] $description
+    )
+
+    # Create the http request basic data
+    $uri = "$baseUri/translation-memory"
+    $headers = Get-RequestHeader -accessKey $accessKey;
+    $body = [ordered]@{
+        name = $name
+        copyright = $copyRight
+        description = $description;
+    }
+
+    # Verify the location and add it to the request body
+    if ($locationId -or $locationName)
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName;
+        if ($null -eq $location)
+        {
+            return;
+        }
+    }
+
+    if ($location)
+    {
+        $body.location = $location.Id
+    }
+
+    # Verify language processing rule
+    $lpr = Get-AllLanguageProcessingRules -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                    | Where-Object {$_.Id -eq $languageProcessingIdOrName -or $_.Name -eq $languageProcessingIdOrName } `
+                    | Select-Object -First 1
+    if ($null -eq $lpr)
+    {
+        Write-Host "Language Processing Rule does not exist or is not related to the location $($location.Name)" -ForegroundColor Green;
+        return;
+    }
+
+    # Verify the field template
+    $fieldTemplate = Get-AllFieldTemplates -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                    | Where-Object {$_.Id -eq $fieldTemplateIdOrName -or $_.Name -eq $fieldTemplateIdOrName} `
+                    | Select-Object -First 1
+
+    if ($null -eq $fieldTemplate)
+    {
+        Write-Host "Field Template does not exist or is not related to the location $($location.Name)" -ForegroundColor Green;
+        return;
+    }
+
+    # Assigns the Language Processing Rule and the Field Template
+    $body.languageProcessingRuleId = $lpr.Id;
+    $body.fieldTemplateId = $fieldTemplate.Id;
+
+    # Verify and Assigns the language directions
+    $languageDirections = Get-LanguageDirections -sourceLanguage $sourceLanguage -target $targetLanguages -languagePairs $languagePairs;
+    if ($languageDirections)
+    {
+        $body.languageDirections = @($languageDirections);
+    }
+    else 
+    {
+        Write-Host "Translation Memory should have at least on source-target language pair" -ForegroundColor Green;
+        return;
+    }
+    
+    $json = $body | ConvertTo-Json -Depth 10;
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Post -Body $json }
 }
 
 function Remove-TranslationMemory
@@ -592,22 +761,302 @@ function Remove-TranslationMemory
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
 
-        [Parameter(Mandatory=$true)]
-        [String] $tmIdOrName
+        [String] $translationMemoryId, 
+        [String] $translationMemoryName
     )
 
-    $tms = Get-AllTranslationMemories $accessKey;
-    $tm = $tms | Where-Object {$_.Id -eq $tmIdOrName -or $_.Name -eq $tmIdOrName } | Select-Object -First 1;
+    $uri = "$baseUri/translation-memory"
+    $headers = Get-RequestHeader -accessKey $accessKey;
+    $tm = Get-TranslationMemory -accessKey $accessKey -translationMemoryId $translationMemoryId -translationMemoryName $translationMemoryName;
 
     if ($tm)
     {
-        $headers = Get-RequestHeader -accessKey $accessKey;
-        $uri = "$baseUri/translation-memory/$($tm.Id)"
+        $uri += "/$($tm.Id)"
+        Invoke-SafeMethod { 
+            $null = Invoke-RestMethod -uri $uri -Headers $headers -Method Delete; # can be added in a more generic method
+            Write-host "Translation Memory removed" -ForegroundColor Green; }
+    }
+}
 
-        return Invoke-RestMethod -uri $uri -Method Delete -Headers $headers;
+function Update-TranslationMemory 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [Psobject] $accessKey,
+
+        [string] $translationMemoryId,
+        [string] $translationMemoryName,
+
+        [string] $name,
+
+        [string] $copyRight,
+        [string] $description, 
+
+        [string] $sourceLanguage,
+        [string[]] $targetLanguages,
+        [psobject[]] $languagePairs,
+        
+        [string] $languageProcessingIdOrName,
+        [string] $fieldTemplateIdOrName
+    )
+
+    # Checks the existence of the Translation Memory
+    $tm = Get-TranslationMemory -accessKey $accessKey -translationMemoryId $translationMemoryId -translationMemoryName $translationMemoryName;
+    if ($null -eq $tm)
+    {
+        Write-Host "Translation Memory must be provided" -ForegroundColor Green;
+        return;
     }
 
-    Write-Host "Translation Memory $tmIdOrName does not exist" -ForegroundColor Green;
+    # Create the http request basic data
+    $uri = "$baseuri/translation-memory/$($tm.Id)";
+    $headers = Get-RequestHeader -accessKey $accessKey;
+    $body = [ordered]@{}
+
+    # Updates the body with the provided paramters
+    if ($name)
+    {
+        $body.name = $name
+    }
+    if ($description)
+    {
+        $body.description = $description;
+    }
+    if ($copyRight)
+    {
+        $body.copyright = $copyRight;
+    }
+
+    if (($sourceLanguage -and $targetLanguages) -or $languagePairs)
+    {
+        $languageDirections = Get-LanguageDirections -sourceLanguage $sourceLanguage -targetLanguages $targetLanguages -languagePairs $languagePairs;
+        if ($languageDirections)
+        {
+            $body.languageDirections = @($languageDirections);
+        }
+        else 
+        {
+            Write-Host "Invalid languages" -ForegroundColor Green;
+            return;
+        }
+    }
+
+    if ($languageProcessingIdOrName)
+    {
+        $lpr = Get-AllLanguageProcessingRules -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                    | Where-Object {$_.Id -eq $languageProcessingIdOrName -or $_.Name -eq $languageProcessingIdOrName } `
+                    | Select-Object -First 1
+        if ($null -eq $lpr)
+        {
+            Write-Host "Language Processing Rule does not exist or is not related to the location of this Translation Memory" -ForegroundColor Green;
+            return;
+        }
+
+        $body.languageProcessingRuleId = $lpr.Id;
+    }
+
+    if ($fieldTemplateIdOrName)
+    {
+          # Verify the field template
+        $fieldTemplate = Get-AllFieldTemplates -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+        | Where-Object {$_.Id -eq $fieldTemplateIdOrName -or $_.Name -eq $fieldTemplateIdOrName} `
+        | Select-Object -First 1
+
+        if ($null -eq $fieldTemplate)
+        {
+            Write-Host "Field Template does not exist or is not related to this Translation Memory" -ForegroundColor Green;
+            return;
+        }
+
+        $body.fieldTemplateId = $fieldTemplate.Id;
+    }
+
+    $json = $body | ConvertTo-Json -Depth 5;
+    return Invoke-SafeMethod {Invoke-RestMethod -Uri $uri -Headers $headers -Method Put -body $json }
+}
+
+function Copy-TranslationMemory 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $translationMemoryId,
+        [string] $translationMemoryName
+    )
+
+    $tm = Get-TranslationMemory -accessKey $accessKey -translationMemoryId $translationMemoryId -translationMemoryName $translationMemoryName;
+    if ($null -eq $tm)
+    {
+        return;
+    }
+
+    $uri = "$baseUri/translation-memory/$($tm.Id)/copy";
+    $headers = Get-RequestHeader -accessKey $accessKey;
+    Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Post; }
+}
+
+function Import-TranslationMemory
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $sourceLanguage,
+        
+        [Parameter(Mandatory=$true)]
+        [string] $targetLanguage,
+
+        [string] $translationMemoryId,
+        [string] $translationMemoryName,
+
+        [string] $importFileLocation,
+        [bool] $importAsPlainText = $false,
+        [bool] $exportInvalidTranslationUnits = $false,
+        [bool] $triggerRecomputeStatistics = $false, 
+        [string] $targetSegmentsDifferOption = "addNew",
+        [string] $unknownFieldsOption = "addToTranslationMemory",
+        [string[]] $onlyImportSegmentsWithConfirmationLevels = @("translated", "approvedSignOff", "approvedTranslation")
+    )
+
+    # Retrieve translation memory object
+    $tm = Get-TranslationMemory -accessKey $accessKey -translationMemoryId $translationMemoryId -translationMemoryName $translationMemoryName;
+    if ($null -eq $tm) {
+        Write-Host "A Translation Memory should be provided" -ForegroundColor Green
+        return
+    }
+
+    # Check if the import file exists
+    if (-not (Test-Path $importFileLocation)) {
+        Write-Host "File does not exist" -ForegroundColor Green
+        return
+    }
+
+    # Construct the import URI
+    $importUri = "$baseUri/translation-memory/$($tm.Id)/imports";
+
+    # Prepare the body for the import request
+    $importBody = [ordered]@{
+        sourceLanguageCode = $sourceLanguage
+        targetLanguageCode = $targetLanguage
+        importAsPlainText = $importAsPlainText
+        exportInvalidTranslationUnits = $exportInvalidTranslationUnits
+        triggerRecomputeStatistics = $triggerRecomputeStatistics
+        targetSegmentsDifferOption = $targetSegmentsDifferOption
+        unknownFieldsOption = $unknownFieldsOption
+        onlyImportSegmentsWithConfirmationLevels = @($onlyImportSegmentsWithConfirmationLevels)
+    }
+
+    $importJson = $importBody | ConvertTo-Json -Depth 5
+
+    # Create headers for the request
+    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+    $headers.Add("X-LC-Tenant", $accessKey.tenant)
+    $headers.Add("Accept", "application/json")
+    $headers.Add("Authorization", $accessKey.token)
+
+    # Create multipart form data content
+    $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
+
+    # Add JSON content to multipart
+    $stringContent = [System.Net.Http.StringContent]::new($importJson, [System.Text.Encoding]::UTF8, "application/json")
+    $stringHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
+    $stringHeader.Name = "properties"
+    $stringContent.Headers.ContentDisposition = $stringHeader
+    $multipartContent.Add($stringContent)
+
+    # Prepare to add the file content
+    if (Test-Path $importFileLocation) {
+        $fileStream = [System.IO.FileStream]::new($importFileLocation, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read)
+        $fileContent = [System.Net.Http.StreamContent]::new($fileStream)
+        
+        # Set file content disposition header
+        $fileHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
+        $fileHeader.Name = "file"
+        $fileHeader.FileName = [System.IO.Path]::GetFileName($importFileLocation)
+        $fileContent.Headers.ContentDisposition = $fileHeader
+        
+        # Add file content to multipart
+        $multipartContent.Add($fileContent)
+    }
+
+    $response = Invoke-SafeMethod { Invoke-RestMethod -Uri $importUri -Method "Post" -Headers $headers -Body $multipartContent };
+    if ($response)
+    {
+        Write-Host "Translation Memory Improt queued" -ForegroundColor Green
+        return $response;
+    }
+}
+
+function Export-TranslationMemory
+{ 
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $sourceLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $targetLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $outputFilePath,
+
+        [string] $translationMemoryId,
+        [string] $translationMemoryName
+
+    )
+
+    $tm = Get-TranslationMemory -accessKey $accessKey -translationMemoryId $translationMemoryId -translationMemoryName $translationMemoryName;
+    if ($null -eq $tm)
+    {
+        Write-Host "A Translation Memory should be provided" -ForegroundColor Green
+        return;
+    }
+
+    $uri = "$baseUri/translation-memory/$($tm.Id)/exports"
+    $headers = Get-RequestHeader -accessKey $accessKey;
+    $body = [ordered]@{
+        languageDirection = @{
+            sourceLanguage = @{
+                languageCode = $sourceLanguage
+            }
+            targetLanguage = @{
+                languageCode = $targetLanguage
+            }
+        }
+    }
+
+    $json = $body | ConvertTo-Json -Depth 2;
+
+    $response = Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Post -body $json; }
+    if ($null -eq $response)
+    {
+        return;
+    }
+
+    $pollUri = "$baseUri/translation-memory/exports/$($response.Id)"
+
+    while ($true)
+    {
+        $pollResponse = Invoke-RestMethod -Uri $pollUri -Headers $headers;
+        Start-Sleep -Seconds 1;
+        if ($pollResponse.Status -eq "failed")
+        {
+            "Export failed"
+            return
+        }
+
+        if ($pollResponse.Status -eq "done")
+        {
+            break;
+        }
+    }
+
+    $downloadUri = "$baseUri/translation-memory/exports/$($pollResponse.Id)/download"
+    $null = Invoke-RestMethod -Uri $downloadUri -Headers $headers -OutFile $outputFilePath;
 }
 
 function Get-AllTranslationQualityAssessments 
@@ -648,15 +1097,24 @@ function Get-AllLanguageProcessingRules
         [psobject] $accessKey,
 
         [string] $locationId,
-        [bool] $includeSubFolders = $false,
-        [string] $sortProperty
+        [string] $locationName,
+        [string] $locationStrategy = "location"
     )
 
-    $uri = "$baseUri/language-processing-rules";
-    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
-    $filter = "?location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
-    $uriFields = "&fields=id,name,description";
-    $uri = $uri + $filter + $uriFields
+    if ($locationId -or $locationName) # find a way to shorten this..
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/language-processing-rules" `
+                         -location $location -fields "fields=id,name,description"`
+                         -locationStrategy $locationStrategy -sort $sortProperty;
+
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
@@ -680,16 +1138,64 @@ function Get-AllFieldTemplates
         [psobject] $accessKey,
 
         [string] $locationId,
-        [bool] $includeSubFolders = $false,
+        [string] $locationName,
+        [string] $locationStrategy = "location",
         [string] $sortProperty
     )
 
-    $uri = "$baseUri/translation-memory/field-templates";
-    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
-    $filter = "?location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
-    $uriFields = "&fields=id,name,description,location";
-    $uri = $uri + $filter + $uriFields
+    if ($locationId -or $locationName) # find a way to shorten this..
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/translation-memory/field-templates" `
+                         -location $location -fields "fields=id,name,description,location"`
+                         -locationStrategy $locationStrategy -sort $sortProperty;
+
     return Get-AllItems -accessKey $accessKey -uri $uri;
+}
+
+function Get-FieldTemplate 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $fieldTemplateId,
+        [string] $fieldTemplateName
+    )
+
+    return Get-Item -accessKey $accessKey -uri "$baseUri/translation-memory/field-templates" -uriQuery "?fields=id,name,description,location" `
+                -id $fieldTemplateId -name $fieldTemplateName; # I should only put the resource not found here..
+}
+
+function Get-LanguagePair {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string] $sourceLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string[]] $targetLanguages
+    )
+
+    $languageDirections = @();
+    foreach ($target in $targetLanguages)
+    {
+
+        $languageDirection = [ordered]@{
+            sourceLanguage = [ordered]@{languageCode = $sourceLanguage}
+            targetLanguage = [ordered]@{languageCode = $target}
+        }
+        
+        $languageDirections += $languageDirection;
+    }
+
+    return $languageDirections;
 }
 
 function Get-Item 
@@ -703,20 +1209,34 @@ function Get-Item
 
         [String] $uriQuery,
         [String] $id,
-        [string] $name
+        [string] $name,
+        [string] $propertyName
     )
 
     if ($id)
     {
         $uri += "/$id/$uriQuery"
         $headers = Get-RequestHeader -accessKey $accessKey;
-        return Invoke-RestMethod -uri $uri -Headers $headers;
+
+        $item = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers }
     }
     elseif ($name)
     {
         $items = Get-AllItems -accessKey $accessKey -uri $($uri + $uriQuery);
-        $item = $items | Where-Object {$_.Name -eq $name } | Select-Object -First 1;
-        return $item;        
+        if ($items)
+        {
+            $item = $items | Where-Object {$_.Name -eq $name } | Select-Object -First 1;
+        }
+
+        if ($null -eq $item)
+        {
+            Write-Host "$propertyName could not be found" -ForegroundColor Green;
+        }
+    }
+
+    if ($item)
+    {
+        return $item;
     }
 }
 
@@ -728,14 +1248,10 @@ function Get-AllItems
 
     $headers = Get-RequestHeader -accessKey $accessKey;
 
-    try 
+    $response = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers}
+    if ($response)
     {
-        $response = Invoke-RestMethod $uri -Method 'GET' -Headers $headers
-        return $response.Items;        
-    }
-    catch 
-    {
-        Write-Host "$_"
+        return $response.Items;
     }
 }
 
@@ -751,7 +1267,6 @@ function Get-FilterString
 
     return "";
 
-    return $propertyValues;
     if ($propertyNames -and $propertyValues)
     {
         $elements = @();
@@ -796,8 +1311,123 @@ function Get-RequestHeader
     return $headers;
 }
 
+function Get-StringUri 
+{
+    param (
+        [String] $root,
+        [String] $name,
+        [psobject] $location,
+        [string] $locationStrategy,
+        [string] $sort,
+        [string] $fields
+    )
+
+    $filter = Get-FilterString -name $name -location $location -locationStrategy $locationStrategy -sort $sort
+
+    if ($filter -and $fields)
+    {
+        return $root + "?" + $filter + "&" + $($fields);
+    }
+    elseif ($filter)
+    {
+        return $root + "?" + $filter
+    }
+    elseif ($fields)
+    {
+        return $root + "?" + $fields
+    }
+    else 
+    {
+        return $root;
+    }
+}
+
+function Get-FilterString {
+    param (
+        [string] $name,
+        [psobject] $location,
+        [string] $locationStrategy,
+        [string] $sort
+    )
+
+    # Initialize an empty array for filters
+    $filter = @()
+    # Check if the parameters are not null or empty, and add them to the filter array
+    if (-not [string]::IsNullOrEmpty($name)) {
+        $filter += "name=$name"
+    }
+    if ($location -and $(-not [string]::IsNullOrEmpty($locationStrategy))) 
+    {
+        $filter += "location=$($location.Id)&locationStrategy=$locationStrategy"
+    }
+    if (-not [string]::IsNullOrEmpty($sort)) {
+        $filter += "sort=$sort"
+    }
+
+    # Return the filter string by joining with "&"
+    return $filter -join '&'
+}
+
+function Invoke-SafeMethod 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [scriptblock] $method
+    )
+
+    try {
+        return & $Method
+    } catch {
+        $response = ConvertFrom-Json $_;
+        Write-Host $response.Message -ForegroundColor Green;
+        return $null
+    }
+
+}
+
+function Test-StringNullOrEmpty 
+{
+    param ([String] $str)
+
+    return -not $str -or $str -eq "";
+}
+
+function Get-LanguageDirections 
+{
+    param (
+        [String[]] $sourceLanguage,
+        [String[]] $targetLanguages,
+        [psobject[]] $languagePairs
+    )
+
+    $languageDirections = @();
+    if ($sourceLanguage -and $targetLanguages)
+    {
+        foreach ($target in $targetLanguages)
+        {
+    
+            $languageDirection = [ordered]@{
+                sourceLanguage = [ordered]@{languageCode = "$sourceLanguage"}
+                targetLanguage = [ordered]@{languageCode = "$target"}
+            }
+            
+            $languageDirections += $languageDirection;
+        }
+    
+    }
+    elseif ($languagePairs)
+    {
+        foreach ($pairs in $languagePairs) {
+            $languageDirections += $pairs;
+        }
+    }
+
+    return $languageDirections;
+}
+
 Export-ModuleMember Get-AllProjectTemplates;
 Export-ModuleMember Get-ProjectTemplate;
+Export-ModuleMember New-ProjectTemplate;
 Export-ModuleMember Remove-ProjectTemplate;
 Export-ModuleMember Get-AllTranslationEngines;
 Export-ModuleMember Get-TranslationEngine;
@@ -818,11 +1448,18 @@ Export-ModuleMember Get-AllLocations;
 Export-ModuleMember Get-Location;
 Export-ModuleMember Get-AllCustomFields;
 Export-ModuleMember Get-CustomField;
+Export-ModuleMember Copy-TranslationMemory;
 Export-ModuleMember Get-AllTranslationMemories;
 Export-ModuleMember Get-TranslationMemory;
+Export-ModuleMember New-TranslationMemory;
 Export-ModuleMember Remove-TranslationMemory;
+Export-ModuleMember Update-TranslationMemory;
+Export-ModuleMember Import-TranslationMemory;   
+Export-ModuleMember Export-TranslationMemory;
 Export-ModuleMember Get-AllTranslationQualityAssessments;
 Export-ModuleMember Get-TranslationQualityAssessment;
 Export-ModuleMember Get-AllLanguageProcessingRules;
 Export-ModuleMember Get-LanguageProcessingRule;
 Export-ModuleMember Get-AllFieldTemplates;
+Export-ModuleMember Get-FieldTemplate;
+Export-ModuleMember Get-LanguagePair;
