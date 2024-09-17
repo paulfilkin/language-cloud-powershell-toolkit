@@ -65,10 +65,8 @@ function New-ProjectTemplate
         [string] $locationId,
         [string] $locationName,
 
-        [string] $fileTypeConfigurationId,
+        [string] $fileTypeConfigurationId, # same with the other..
         [string] $fileTypeConfigurationName,
-
-        # Up until here there are the mandatory parameters
 
         [string[]] $userManagersIdsOrNames,
         [string[]] $groupManagersIdsOrNames,
@@ -237,15 +235,20 @@ function Get-AllCustomers
         [psobject] $accessKey,
 
         [string] $locationId,
-        [bool] $includeSubFolders = $false,
+        [string] $locationName,
+        [string] $locationStrategy = "location",
         [string] $sortProperty
     )
 
-    $uri = "$baseUri/customers";
-    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
-    $filter = "?location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
-    $uriFields = "&fields=id,name,location";
-    $uri = $uri + $filter + $uriFields
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/customers" `
+                         -location $location -fields "fields=id,name,location"`
+                         -locationStrategy $locationStrategy -sort $sortProperty;
+
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
@@ -259,7 +262,7 @@ function Get-Customer
         [string] $customerName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/customers" -uriQuery "?fields=id,name,location" -id $customerId -name $customerName;
+    return Get-Item -accessKey $accessKey -uri "$baseUri/customers" -uriQuery "?fields=id,name,location" -id $customerId -name $customerName -propertyName "Customer";
 }
 
 function Remove-Customer
@@ -268,22 +271,21 @@ function Remove-Customer
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
 
-        [Parameter(Mandatory=$true)]
-        [string] $customerIdOrName
+        [string] $customerId,
+        [string] $customerName
     )
 
-    $allCustomers = Get-AllCustomers $accessKey;
-    $customer = $allCustomers | Where-Object {$_.id -eq $customerIdOrName -or $_.name -eq $customerIdOrName} | Select-Object -First 1;
+    $uri = "$baseUri/customers"
+    $headers = Get-RequestHeader -accessKey $accessKey;
+    $customer = Get-Customer -accessKey $accessKey -customerId $customerId -customerName $customerName
     if ($customer)
     {
-        $headers = Get-RequestHeader -accessKey $accessKey;
-
-        $uri = "$baseUri/customers/$($customer.Id)"
-        return Invoke-RestMethod -Headers $headers -Method Delete -Uri $uri;
+        $uri += "/$($customer.Id)";
+        Invoke-SafeMethod -method {
+            $null = Invoke-RestMethod -Headers $headers -Method Delete -Uri $uri;
+            Write-Host "Customer removed" -ForegroundColor Green;
+        }
     }
-
-    Write-Host "Customer $customerIdOrName does not exist" -ForegroundColor Green;
-
 }
 
 function New-Customer
@@ -295,24 +297,29 @@ function New-Customer
         [Parameter(Mandatory=$true)]
         [String] $customerName,
 
-        [string] $locationIdOrName,
+        [string] $locationId,
+        [string] $locationName,
         [string] $firstName,
         [string] $lastName,
         [string] $email
     )
-
+    
+    $uri = "$baseUri/customers"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{
         name = $customerName;
     }
 
-    if ($locationIdOrName)
+    if ($locationId -or $locationName)
     {
-        $allLocations = Get-AllLocations $accessKey;
-        $location = $allLocations | Where-Object {$_.Id -eq $locationIdOrName -or $_.Name -eq $locationIdOrName } | Select-Object -First 1;
-        if ($location)
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName;
+        if ($null -eq $location)
         {
-            $body.location = $location.Id;
+            return;
+        }
+        else 
+        {
+            $body.location = $location.id;
         }
     }
 
@@ -323,11 +330,98 @@ function New-Customer
         $body.email = $email
     }
 
-
     $json = $body | ConvertTo-Json;
-    $uri = "$baseUri/customers"
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post}
+}
 
-    return Invoke-RestMethod -uri $uri -Method Post -Headers $headers -Body $json;
+function Update-Customer 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $customerId,
+        [string] $customerName,
+
+        [string] $name,
+        [string] $ragStatus,
+        [string] $folderVisibility,
+        [string[]] $customFieldIdsOrNames
+    )
+
+    $customer = Get-Customer -accessKey $accessKey -customerId $customerId -customerName $customerName
+    if ($null -eq $customer)
+    {
+        Write-Host "Customer must be provided" -ForegroundColor Green;
+        return;
+    }
+
+    $uri = "$baseUri/customers/$($customer.Id)";
+    $headers = Get-RequestHeader -accessKey $accessKey;
+    $body = [ordered]@{};
+
+    if ($name)
+    {
+        $body.name = $name
+    }
+    if ($ragStatus)
+    {
+        $body.ragStatus = $ragStatus
+    }
+    if ($folderVisibility)
+    {
+        $body.folderVisibility = $folderVisibility
+    }
+
+    if ($customFieldIdsOrNames)
+    {
+        $customFields = Get-AllCustomFields -accessKey $accessKey -locationId $customer.Location.Id -locationStrategy "bloodline" `
+                            | Where-Object {$_.Id -in $customFieldIdsOrNames -or $_.Name -in $customFieldIdsOrNames } `
+                            | Where-Object {$_.ResourceType -eq "Customer"} 
+        
+        if ($null -eq $customFields -or
+            $customFields.Count -ne $customFieldIdsOrNames.Count)
+        {   
+            $missingFields = $customFieldIdsOrNames | Where-Object { $_ -notin $customFields.Id -and $_ -notin $customFields.Name }
+            Write-Host "The following custom fields were not found: $missingFields" -ForegroundColor Green;
+            return;
+        }
+
+        $fieldDefinitions = @();
+        foreach ($customField in $customFields)
+        {
+            $fieldDefinition = [ordered] @{
+            };
+            if ($customField.defaultValue)
+            {
+                $fieldDefinition.key = $customField.key
+                $fieldDefinition.value = $customField.defaultValue;
+            }
+            else 
+            {
+                Write-Host "Enter the key for Custom Field $($customField.Name) of type $($customField.Type)" -ForegroundColor Yellow
+                if ($customField.pickListOptions)
+                {
+                    foreach ($pickList in $customField.pickListOptions)
+                    {
+                        Write-Host $pickList -ForegroundColor DarkYellow;
+                    }
+                }
+
+                $fieldDefinition.key = $customField.key;
+                $fieldDefinition.value = Read-Host 
+            }
+
+            $fieldDefinitions += $fieldDefinition;
+        }
+
+        $body.customFieldDefinitions = @($fieldDefinitions);
+    }
+
+    $json = $body | ConvertTo-Json -Depth 3;
+    Invoke-SafeMethod { 
+        $null = Invoke-RestMethod -Uri $uri -Headers $headers -Method Put -Body $json; 
+        Write-Host "Customer updated successfully" -ForegroundColor Green; }
 }
 
 <#
@@ -602,15 +696,20 @@ function Get-AllCustomFields
         [psobject] $accessKey,
 
         [string] $locationId,
-        [bool] $includeSubFolders = $false,
+        [string] $locationName,
+        [string] $locationStrategy = "location",
         [string] $sortProperty
     )
 
-    $uri = "$baseUri/custom-field-definitions";
-    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
-    $filter = "?location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
-    $uriFields = "&fields=id,name,key,type";
-    $uri = $uri + $filter + $uriFields
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/custom-field-definitions" `
+                         -location $location -fields "fields=id,name,key,description,defaultValue,type,location,resourceType,isMandatory,pickListOptions" `
+                         -locationStrategy $locationStrategy -sort $sortProperty;
+
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
@@ -624,7 +723,7 @@ function Get-CustomField
         [String] $customFieldName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/custom-field-definitions" -uriQuery "?fields=id,name,key,type" -id $customFieldId -name $customFieldName;
+    return Get-Item -accessKey $accessKey -uri "$baseUri/custom-field-definitions" -uriQuery "?fields=id,name,key,description,defaultValue,type,location,resourceType,isMandatory,pickListOptions" -id $customFieldId -name $customFieldName;
 }
 
 function Get-AllTranslationMemories 
@@ -1385,13 +1484,6 @@ function Invoke-SafeMethod
 
 }
 
-function Test-StringNullOrEmpty 
-{
-    param ([String] $str)
-
-    return -not $str -or $str -eq "";
-}
-
 function Get-LanguageDirections 
 {
     param (
@@ -1435,6 +1527,7 @@ Export-ModuleMember Get-AllCustomers;
 Export-ModuleMember Get-Customer;
 Export-ModuleMember New-Customer;
 Export-ModuleMember Remove-Customer;
+Export-ModuleMember Update-Customer;
 Export-ModuleMember Get-AllWorkflows;
 Export-ModuleMember Get-Workflow;
 Export-ModuleMember Get-AllPricingModels;
