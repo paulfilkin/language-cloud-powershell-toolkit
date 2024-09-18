@@ -77,12 +77,15 @@ function New-ProjectTemplate
         [string[]] $targetLanguages,
         [psobject] $languagePairs,
         [string[]] $userManagerIdsOrNames,
+        [string[]] $groupManagerIdsOrNames,
         [string[]] $customFieldIdsOrNames,
         [string] $translationEngineIdOrName,
         [string] $pricingModelIdOrName,
         [string] $workflowIdOrName,
         [string] $tqaIdOrName,
+        [string] $scheduleTemplateIdOrName,
 
+        [string] $scheduleTemplateStrategy = "copy",
         [string] $fileTypeConfigurationStrategy = "copy",
         [string] $translationEngineStrategy = "copy",
         [string] $pricingModelStrategy = "copy",
@@ -138,9 +141,6 @@ function New-ProjectTemplate
         strategy = $fileTypeConfigurationStrategy
     }
 
-    if ($userManagerIdsOrNames) # add later the bloodline part..
-    {
-    }
     if ($projectManagerIdsOrNames)
     {
     }
@@ -220,6 +220,7 @@ function New-ProjectTemplate
         if ($null -eq $tqa)
         {
             Write-Host "Translation Quality Assessment not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
         }
 
         $body.settings.qualityManagement = @{
@@ -228,6 +229,81 @@ function New-ProjectTemplate
                 strategy = $tqaStrategy
             }
         }
+    }
+
+    if ($scheduleTemplateIdOrName)
+    {
+        $scheduleTemplate = Get-AllScheduleTemplates -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                        | Where-Object {$_.Id -eq $scheduleTemplateIdOrName -or $_.Name -eq $scheduleTemplateIdOrName } `
+                        | Select-Object -First 1
+
+        if ($null -eq $scheduleTemplate)
+        {
+            Write-Host "Schedule Template not found or not relate to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.scheduleTemplate = @{
+            id = $scheduleTemplate.Id 
+            strategy = $scheduleTemplateStrategy
+        }
+    }
+
+    $projectManagers = @();
+    if ($userManagerIdsOrNames)
+    {
+        $users = Get-AllUsers -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                    | Where-Object {$_.id -in $userManagerIdsOrNames -or $_.email -in $userManagerIdsOrNames} `
+                    | Select-Object -First 1;
+
+        if ($null -eq $users -or $users.Count -ne $userManagerIdsOrNames.Count) {   
+            $missingUsers = $userManagerIdsOrNames | Where-Object { $_ -notin $users.id -and $_ -notin $users.email }
+            
+            Write-Host "The following user IDs or emails were not found or are not related with the location $($location.Id): $missingUsers" -ForegroundColor Green;
+            return;
+        }
+
+        # Create a list of users with "id" and "type" = "user"
+        $userList = $users | ForEach-Object {
+            [PSCustomObject]@{
+                id   = $_.id
+                type = "user"
+            }
+
+        }
+
+        $projectManagers += $userList;
+    }   
+
+    if ($groupManagerIdsOrNames)
+    {
+        $groups = Get-AllGroups -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                    | Where-Object {$_.Id -in $groupManagerIdsOrNames -or $_.Name -in $groupManagerIdsOrNames} `
+                    | Select-Object -First 1
+
+        if ($null -eq $groups -or $groups.Count -ne $groupManagerIdsOrNames.Count) 
+        {   
+            $missingGroups = $groupManagerIdsOrNames | Where-Object { $_ -notin $groups.id -and $_ -notin $groups.email }
+            
+            Write-Host "The following group IDs or names were not found or are not related with the location $($location.Id): $missingGroups" -ForegroundColor Green;
+            return;
+        }
+
+        # Create a list of users with "id" and "type" = "user"
+        $grouList = $groups | ForEach-Object {
+            [PSCustomObject]@{
+                id   = $_.id
+                type = "group"
+            }
+
+        }
+
+        $projectManagers += $grouList;
+    }
+
+    if ($projectManagers)
+    {
+        $body.projectManagers = @($projectManagers);
     }
 
     if ($customFieldIdsOrNames)
@@ -276,7 +352,9 @@ function New-ProjectTemplate
     }
 
     $json = $body | ConvertTo-Json -Depth 100;
-    Invoke-RestMethod -Uri $uri -Headers $headers -Method Post -Body $json;
+    return Invoke-SafeMethod {
+        Invoke-RestMethod -Uri $uri -Headers $headers -Method Post -Body $json;
+    }
 }
 
 function Remove-ProjectTemplate
@@ -774,10 +852,23 @@ function Get-AllScheduleTemplates
 {
     param (
         [Parameter(Mandatory=$true)]
-        [psobject] $accessKey
+        [psobject] $accessKey,
+
+        [string] $locationId,
+        [string] $locationName,
+        [string] $locationStrategy = "location"
     )
 
-    return Get-AllItems $accessKey "$baseUri/schedule-templates?fields=name,description,location"
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/schedule-templates" `
+                         -location $location -fields "fields=name,description,location" `
+                         -locationStrategy $locationStrategy;
+
+    return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
 function Get-ScheduleTemplate 

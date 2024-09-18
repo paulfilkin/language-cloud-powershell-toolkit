@@ -27,16 +27,22 @@ function Get-AllUsers
         [psobject] $accessKey,
 
         [string] $locationId,
-        [bool] $includeSubFolders = $false,
+        [string] $locationName,
+        [string] $locationStrategy = "location",
         [string] $sortProperty
     )
+    
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
 
-    $uri = "$baseUri/users";
-    $locationStrategy = Get-LocationStrategy -includeSubFolders $includeSubFolders;
-    $filter = "?location=$locationId&locationStrategy=$locationStrategy&sort=$sortProperty"
-    $uriFields = "&fields=id,email,firstName,lastName,location";
-    $uri = $uri + $filter + $uriFields
+    $uri = Get-StringUri -root "$baseUri/users" `
+                         -location $location -fields "fields=id,email,firstName,lastName,location"`
+                         -locationStrategy $locationStrategy -sort $sortProperty;
+
     return Get-AllItems -accessKey $accessKey -uri $uri;
+
 }
 
 function  Get-User {
@@ -91,13 +97,28 @@ This example retrieves all groups and stores them in the `$groups` variable.
 .NOTES
 This function makes a GET request to the groups API endpoint and returns a collection of group objects.
 #>
-function Get-AllGroups
+function Get-AllGroups # apply filter on groups and users
 {
     param (
-        [psobject] $accessKey
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $locationId,
+        [string] $locationName,
+        [string] $locationStrategy = "bloodline",
+        [string] $sortProperty
     )
 
-    return Get-AllItems $accessKey 'https://lc-api.sdl.com/public-api/v1/groups?fields=id,name,description,location';
+    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    }
+
+    $uri = Get-StringUri -root "$baseUri/groups" `
+                         -location $location -fields "fields=id,name,description,location"`
+                         -locationStrategy $locationStrategy -sort $sortProperty;
+
+    return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
 function Get-AllItems
@@ -150,6 +171,62 @@ function Get-RequestHeader
     $headers.Add("Authorization", $accessKey.token)
 
     return $headers;
+}
+
+function Get-StringUri 
+{
+    param (
+        [String] $root,
+        [String] $name,
+        [psobject] $location,
+        [string] $locationStrategy,
+        [string] $sort,
+        [string] $fields
+    )
+
+    $filter = Get-FilterString -name $name -location $location -locationStrategy $locationStrategy -sort $sort
+    if ($filter -and $fields)
+    {
+        return $root + "?" + $filter + "&" + $($fields);
+    }
+    elseif ($filter)
+    {
+        return $root + "?" + $filter
+    }
+    elseif ($fields)
+    {
+        return $root + "?" + $fields
+    }
+    else 
+    {
+        return $root;
+    }
+}
+
+function Get-FilterString {
+    param (
+        [string] $name,
+        [psobject] $location,
+        [string] $locationStrategy,
+        [string] $sort
+    )
+
+    # Initialize an empty array for filters
+    $filter = @()
+    # Check if the parameters are not null or empty, and add them to the filter array
+    if (-not [string]::IsNullOrEmpty($name)) {
+        $filter += "name=$name"
+    }
+    if ($location -and $(-not [string]::IsNullOrEmpty($locationStrategy))) 
+    {
+        $filter += "location=$($location.Id)&locationStrategy=$locationStrategy"
+    }
+    if (-not [string]::IsNullOrEmpty($sort)) {
+        $filter += "sort=$sort"
+    }
+
+    # Return the filter string by joining with "&"
+    return $filter -join '&'
 }
 
 Export-ModuleMember Get-AllUsers; 
