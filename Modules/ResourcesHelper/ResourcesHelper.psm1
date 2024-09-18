@@ -205,7 +205,7 @@ function New-ProjectTemplate
             return;
         }
 
-        $body.worfklow = [ordered] @{
+        $body.workflow = [ordered] @{
             id = $workflow.Id 
             strategy = $workflowStrategy
         }
@@ -223,11 +223,9 @@ function New-ProjectTemplate
         }
 
         $body.settings.qualityManagement = @{
-            qualityManagement = @{
-                tqaProfile = @{
-                    id = $tqa.Id 
-                    strategy = $tqaStrategy
-                }
+            tqaProfile = [ordered]@{
+                id = $tqa.Id 
+                strategy = $tqaStrategy
             }
         }
     }
