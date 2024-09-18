@@ -75,7 +75,7 @@ function New-ProjectTemplate
 
         [string] $sourceLanguage,
         [string[]] $targetLanguages,
-        [psobject] $languagePairs,
+        [psobject[]] $languagePairs,
         [string[]] $userManagerIdsOrNames,
         [string[]] $groupManagerIdsOrNames,
         [string[]] $customFieldIdsOrNames,
@@ -139,10 +139,6 @@ function New-ProjectTemplate
     $body.fileProcessingConfiguration = @{
         id = $fileTypeConfiguration.Id
         strategy = $fileTypeConfigurationStrategy
-    }
-
-    if ($projectManagerIdsOrNames)
-    {
     }
 
     if (($sourceLanguage -and $targetLanguages) -or $languagePairs)
@@ -376,6 +372,302 @@ function Remove-ProjectTemplate
         Invoke-SafeMethod { 
                 Invoke-RestMethod -Uri $uri -Headers $headers -Method Delete;
                 Write-Host "Project Template removed" -ForegroundColor Green}
+    }
+}
+
+function Update-ProjectTemplate 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $projectTemplateId,
+        [string] $projectTemplateName,
+
+        [string] $name,
+        [string] $description,
+        [string] $sourceLanguage,
+        [string[]] $targetLanguages,
+        [psobject[]] $languagePairs,
+        [string[]] $userManagerIdsOrNames,
+        [string[]] $groupManagerIdsOrNames,
+        [string[]] $customFieldIdsOrNames,
+        [string] $fileTypeConfigurationIdOrName,
+        [string] $translationEngineIdOrName,
+        [string] $pricingModelIdOrName,
+        [string] $workflowIdOrName,
+        [string] $tqaIdOrName,
+        [string] $scheduleTemplateIdOrName,
+
+        [string] $scheduleTemplateStrategy = "copy",
+        [string] $fileTypeConfigurationStrategy = "copy",
+        [string] $translationEngineStrategy = "copy",
+        [string] $pricingModelStrategy = "copy",
+        [string] $workflowStrategy = "copy",
+        [string] $tqaStrategy = "copy",
+        [switch] $inclueGeneralSettings,
+        [bool] $restrictFileDownload = $false,
+        [bool] $customerPortalVisibility = $true,
+        [int] $completeDays = 90,
+        [int] $archiveDays = 90,
+        [int] $archiveReminderDays = 7
+    )
+
+    $template = Get-ProjectTemplate -accessKey $accessKey -projectTemplateId $projectTemplateId -projectTemplateName $projectTemplateName
+    if ($null -eq $template)
+    {
+        return;
+    }
+    $uri = "$baseUri/project-templates/$($template.Id)";
+    $headers = Get-RequestHeader $accessKey;
+
+    $body = @{}
+    if ($name)
+    {
+        $body.name = $name
+    }
+    if ($description)
+    {
+        $body.description = $description;
+    }
+
+    if ($fileTypeConfigurationIdOrName)
+    {
+        $fileTypeConfiguration = Get-AllFileTypeConfigurations -accessKey $accessKey -locationId $template.location.id -locationStrategy "bloodline" `
+                        | Where-Object {$_.Id -eq $fileTypeConfigurationIdOrName -or $_.Name -eq $fileTypeConfigurationIdOrName } `
+                        | Select-Object -First 1;
+
+        if ($null -eq $fileTypeConfiguration)
+        {
+            Write-Host "File Type configuration does not exist or it is not related to the location $($location.Name)" -ForegroundColor Green;
+            return
+        }
+
+        $body.fileProcessingConfiguration = @{
+            id = $fileTypeConfiguration.Id
+            strategy = $fileTypeConfigurationStrategy
+        }
+    }
+
+    if (($sourceLanguage -and $targetLanguages) -or $languagePairs)
+    {
+        $languageDirections = Get-LanguageDirections -sourceLanguage $sourceLanguage -targetLanguages $targetLanguages -languagePairs $languagePairs;
+        if ($null -eq $languageDirections)  
+        {
+            Write-Host "Invalid languages" -ForegroundColor;
+            return;
+        }
+
+        $body.languageDirections = @($languageDirections);
+    }
+
+    $projectManagers = @();
+    if ($userManagerIdsOrNames)
+    {
+        $users = Get-AllUsers -accessKey $accessKey -locationId $template.location.id -locationStrategy "bloodline" `
+                    | Where-Object {$_.id -in $userManagerIdsOrNames -or $_.email -in $userManagerIdsOrNames} `
+                    | Select-Object -First 1;
+
+        if ($null -eq $users -or $users.Count -ne $userManagerIdsOrNames.Count) {   
+            $missingUsers = $userManagerIdsOrNames | Where-Object { $_ -notin $users.id -and $_ -notin $users.email }
+            
+            Write-Host "The following user IDs or emails were not found or are not related with the location $($location.Id): $missingUsers" -ForegroundColor Green;
+            return;
+        }
+
+        # Create a list of users with "id" and "type" = "user"
+        $userList = $users | ForEach-Object {
+            [PSCustomObject]@{
+                id   = $_.id
+                type = "user"
+            }
+
+        }
+
+        $projectManagers += $userList;
+    }   
+
+    if ($groupManagerIdsOrNames)
+    {
+        $groups = Get-AllGroups -accessKey $accessKey -locationId $template.location.id -locationStrategy "bloodline" `
+                    | Where-Object {$_.Id -in $groupManagerIdsOrNames -or $_.Name -in $groupManagerIdsOrNames} `
+                    | Select-Object -First 1
+
+        if ($null -eq $groups -or $groups.Count -ne $groupManagerIdsOrNames.Count) 
+        {   
+            $missingGroups = $groupManagerIdsOrNames | Where-Object { $_ -notin $groups.id -and $_ -notin $groups.email }
+            
+            Write-Host "The following group IDs or names were not found or are not related with the location $($location.Id): $missingGroups" -ForegroundColor Green;
+            return;
+        }
+
+        # Create a list of users with "id" and "type" = "user"
+        $grouList = $groups | ForEach-Object {
+            [PSCustomObject]@{
+                id   = $_.id
+                type = "group"
+            }
+
+        }
+
+        $projectManagers += $grouList;
+    }
+
+    if ($projectManagers)
+    {
+        $body.projectManagers = @($projectManagers);
+    }
+
+    if ($translationEngineIdOrName)
+    {
+        $translationEngine = Get-AllTranslationEngines -accessKey $accessKey -locationId $template.location.id -locationStrategy "bloodline" `
+                            | Where-Object {$_.Id -eq $translationEngineIdOrName -or $_.Name -eq $translationEngineIdOrName} `
+                            | Select-Object -First 1;
+        
+        if ($null -eq $translationEngine)
+        {
+            Write-Host "Translation Engine not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.translationEngine = [ordered] @{
+            id = $translationEngine.Id
+            strategy = $translationEngineStrategy
+        }
+    }
+
+    if ($pricingModelIdOrName)
+    {
+        $pricingModel = Get-AllPricingModels -accessKey $accessKey -locationId $template.location.id -locationStrategy "bloodline" `
+                        | Where-Object {$_.id -eq $pricingModelIdOrName -or $_.name -eq $pricingModelIdOrName } `
+                        | Select-Object -First 1;
+
+        if ($null -eq $pricingModel)
+        {
+            Write-Host "Pricing Model not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.pricingModel = [ordered] @{
+            id = $pricingModel.Id
+            strategy = $pricingModelStrategy
+        }
+    }
+
+    if ($workflowIdOrName)
+    {
+        $workflow = Get-AllWorkflows -accessKey $accessKey -locationId $template.location.id -locationStrategy "bloodline" `
+                    | Where-Object {$_.Id -eq $workflowIdOrName -or $_.Name -eq $workflowIdOrName } `
+                    | Select-Object -First 1;
+
+        if ($null -eq $workflow)
+        {
+            Write-Host "Workflow not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.workflow = [ordered] @{
+            id = $workflow.Id 
+            strategy = $workflowStrategy
+        }
+    }
+
+    $settings = $null;
+    if ($tqaIdOrName)
+    {
+        $tqa = Get-AllTranslationQualityAssessments -accessKey $accessKey -locationId $template.location.id -locationStrategy "bloodline" `
+                    | Where-Object {$_.id -eq $tqaIdOrName -or $_.name -eq $tqaIdOrName } `
+                    | Select-Object -First 1;
+
+        if ($null -eq $tqa)
+        {
+            Write-Host "Translation Quality Assessment not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $settings = @{
+            qualityManagement = @{
+                tqaProfile = [ordered] @{
+                    id = $tqa.Id 
+                    strategy = $tqaStrategy
+                }
+            }
+        }
+    }
+
+    if ($scheduleTemplateIdOrName)
+    {
+        $scheduleTemplate = Get-AllScheduleTemplates -accessKey $accessKey -locationId $template.location.id -locationStrategy "bloodline" `
+                        | Where-Object {$_.Id -eq $scheduleTemplateIdOrName -or $_.Name -eq $scheduleTemplateIdOrName } `
+                        | Select-Object -First 1
+
+        if ($null -eq $scheduleTemplate)
+        {
+            Write-Host "Schedule Template not found or not relate to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.scheduleTemplate = @{
+            id = $scheduleTemplate.Id 
+            strategy = $scheduleTemplateStrategy
+        }
+    }
+
+    
+    if ($customFieldIdsOrNames)
+    {
+        $customFields = Get-AllCustomFields -accessKey $accessKey -locationId $template.location.id -locationStrategy "bloodline" `
+                            | Where-Object {$_.Id -in $customFieldIdsOrNames -or $_.Name -in $customFieldIdsOrNames } `
+                            | Where-Object {$_.ResourceType -eq "Project"} 
+                            
+        if ($null -eq $customFields -or
+            $customFields.Count -ne $customFieldIdsOrNames.Count)
+        {   
+            $missingFields = $customFieldIdsOrNames | Where-Object { $_ -notin $customFields.Id -and $_ -notin $customFields.Name }
+            Write-Host "The following custom fields were not found: $missingFields" -ForegroundColor Green;
+            return;
+        }
+
+        $fieldDefinitions = @();
+        foreach ($customField in $customFields)
+        {
+            $fieldDefinition = [ordered] @{
+            };
+            if ($customField.defaultValue)
+            {
+                $fieldDefinition.key = $customField.key
+                $fieldDefinition.value = $customField.defaultValue;
+            }
+            else 
+            {
+                Write-Host "Enter the key for Custom Field $($customField.Name) of type $($customField.Type)" -ForegroundColor Yellow
+                if ($customField.pickListOptions)
+                {
+                    foreach ($pickList in $customField.pickListOptions)
+                    {
+                        Write-Host $pickList -ForegroundColor DarkYellow;
+                    }
+                }
+
+                $fieldDefinition.key = $customField.key;
+                $fieldDefinition.value = Read-Host 
+            }
+
+            $fieldDefinitions += $fieldDefinition;
+        }
+
+        $body.customFields = @($fieldDefinitions);
+    }
+
+    if ($settings)
+    {
+        $body.settings = $settings;
+    }
+
+    $json = $body | ConvertTo-Json -Depth 100;
+    Invoke-SafeMethod {
+        Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put;
+        Write-Host "Project Template updated successfully" -ForegroundColor Green;
     }
 }
 
@@ -1783,6 +2075,7 @@ Export-ModuleMember Get-AllProjectTemplates;
 Export-ModuleMember Get-ProjectTemplate;
 Export-ModuleMember New-ProjectTemplate;
 Export-ModuleMember Remove-ProjectTemplate;
+Export-ModuleMember Update-ProjectTemplate;
 Export-ModuleMember Get-AllTranslationEngines;
 Export-ModuleMember Get-TranslationEngine;
 Export-ModuleMember Get-AllCustomers;
