@@ -48,11 +48,16 @@ function New-Termbase
         [string] $name,
 
         [string] $locationId,
-        [string] $locationName, #mandatory apparently
+        [string] $locationName,
 
-        [Parameter(Mandatory=$true)]
         [string[]] $languageCodes,
+        [psobject[]] $fields,
 
+        [string] $termbaseTemplateId,
+        [string] $termbaseTemplateName,
+        [string] $pathToXDT,
+        
+        [bool] $inheritLanguages = $true,
         [string] $description,
         [string] $copyRight
     )
@@ -70,13 +75,66 @@ function New-Termbase
         location = $location.Id 
         description = $description
         copyright = $copyRight
-        termbaseStructure = [ordered]@{
-            languages = @($languageCodes)
+        termbaseStructure = @{
+            languages = @()
         }
     }
 
-    $json = $body | ConvertTo-Json -Depth 3
-    return Invoke-RestMethod -Uri $uri -Headers $headers -Method Post -Body $json;
+    $fieldDefinitions = @();
+
+    if ($termbaseTemplateId -or $termbaseTemplateName)
+    {
+        $termbaseTemplate = Get-TermbaseTemplate -accessKey $accessKey -termbaseTemplateId $termbaseTemplateId -termbaseTemplateName $termbaseTemplateName;
+        if ($null -eq $termbaseTemplate)
+        {
+            return;
+        }
+
+        if ($inheritLanguages)
+        {
+            $languageCodes += $termbaseTemplate.languages | ForEach-Object {$_.languageCode}
+        }
+
+        $languageCodes = $languageCodes | Select-Object -Unique;
+        $body.termbaseStructure.languages = @($languageCodes | ForEach-Object { @{languageCode = $_} });
+        $fieldDefinitions += Format-Fields -fields $termbaseTemplate.Fields;
+    }
+    elseif ($pathToXDT)
+    {
+        $xdt = ConvertTo-TermbaseStructure -accessKey $accessKey -pathToXDT $pathToXDT;
+        if ($null -eq $xdt)
+        {
+            return;
+        }
+
+        if ($inheritLanguages)
+        {
+            $languageCodes += $xdt.languages | ForEach-Object {$_.languageCode };
+        }
+
+        $languageCodes = $languageCodes | Select-Object -Unique;
+        $body.termbaseStructure.languages = @($languageCodes | ForEach-Object { @{languageCode = $_} })
+        $fieldDefinitions += Format-Fields -fields $($xdt.Fields)
+    }
+    else 
+    {
+        $body.termbaseStructure.languages = @($languageCodes | ForEach-Object { @{languageCode = $_} })
+    }
+
+    if ($fields)
+    {
+        $fieldDefinitions += Format-Fields -fields $fields;
+    }
+
+    if ($fieldDefinitions)
+    {
+        $body.termbaseStructure.fields = @($fieldDefinitions);
+    }
+    
+    $json = $body | ConvertTo-Json -Depth 10    
+    return Invoke-SafeMethod {
+        Invoke-RestMethod -Uri $uri -Headers $headers -Method Post -Body $json;
+    }
 }
 
 function Remove-Termbase 
@@ -119,7 +177,7 @@ function Get-AllTermbaseTemplates
     }
 
     $uri = Get-StringUri -root "$baseUri/termbase-templates" `
-            -location $location -fields "fields=id,name,description,copyright,location,type,languages,fields" `
+            -location $location -fields "fields=id,name,description,copyright,location,type,languages,fields,fields.name,fields.level,fields.dataType,fields.pickListValues,fields.allowCustomValues,fields.allowMultiple,fields.isMandatory" `
             -locationStrategy $locationStrategy;
 
     return Get-AllItems -accessKey $accessKey -uri $uri;
@@ -136,7 +194,7 @@ function Get-TermbaseTemplate
     )
 
     return Get-Item -accessKey $accessKey -uri "$baseUri/termbase-templates" `
-            -uriQuery "?fields=id,name,description,copyright,location,type,languages,fields" `
+            -uriQuery "?fields=id,name,description,copyright,location,type,languages,fields.name,fields.level,fields.dataType,fields.pickListValues,fields.allowCustomValues,fields.allowMultiple,fields.isMandatory" `
             -id $termbaseTemplateId -name $termbaseTemplateName -propertyName "Termbase template"
 }
 
@@ -160,6 +218,136 @@ function Remove-TermbaseTemplate
             $null = Invoke-RestMethod -Uri $uri -Headers $headers -method Delete;
             Write-Host "Termbase template removed" -ForegroundColor Green;
         }
+    }
+}
+
+function New-TermbaseTemplate 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $name,
+
+        [string] $locationId,
+        [string] $locationName,
+
+        [string[]] $languageCodes,
+        [psobject[]] $fields,
+
+        [string] $termbaseTemplateId,
+        [string] $termbaseTemplateName,
+        [string] $pathToXDT,
+        
+        [bool] $inheritLanguages = $true,
+        [string] $description,
+        [string] $copyRight
+    )
+
+    $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    if ($null -eq $location)
+    {
+        return;
+    }
+
+    $uri = "$baseUri/termbase-templates"
+    $headers = Get-RequestHeader -accessKey $accessKey;
+    $body = [ordered]@{
+        name = $name
+        location = $location.Id 
+        description = $description
+        copyright = $copyRight
+    }
+
+    $fieldDefinitions = @();
+    $languages = @();
+    if ($termbaseTemplateId -or $termbaseTemplateName)
+    {
+        $termbaseTemplate = Get-TermbaseTemplate -accessKey $accessKey -termbaseTemplateId $termbaseTemplateId -termbaseTemplateName $termbaseTemplateName;
+        if ($null -eq $termbaseTemplate)
+        {
+            return;
+        }
+
+        if ($inheritLanguages)
+        {
+            $languageCodes += $termbaseTemplate.languages | ForEach-Object {$_.languageCode}
+        }
+
+        $languageCodes = $languageCodes | Select-Object -Unique;
+        $languages = @($languageCodes | ForEach-Object { @{languageCode = $_} });
+        $fieldDefinitions += Format-Fields -fields $termbaseTemplate.Fields;
+    }
+    elseif ($pathToXDT)
+    {
+        $xdt = ConvertTo-TermbaseStructure -accessKey $accessKey -pathToXDT $pathToXDT;
+        if ($null -eq $xdt)
+        {
+            return;
+        }
+
+        if ($inheritLanguages)
+        {
+            $languageCodes += $xdt.languages | ForEach-Object {$_.languageCode };
+        }
+
+        $languageCodes = $languageCodes | Select-Object -Unique;
+        $languages = @($languageCodes | ForEach-Object { @{languageCode = $_} })
+        $fieldDefinitions += Format-Fields -fields $($xdt.Fields)
+    }
+    else 
+    {
+        $languages = @($languageCodes | ForEach-Object { @{languageCode = $_} })
+    }
+
+    if ($fields)
+    {
+        $fieldDefinitions += Format-Fields -fields $fields;
+    }
+
+    if ($fieldDefinitions)
+    {
+        $body.fields = @($fieldDefinitions);
+    }
+    if ($languages)
+    {
+        $body.languages = @($languages);
+    }
+    
+    $json = $body | ConvertTo-Json -Depth 10    
+    return Invoke-SafeMethod {
+        Invoke-RestMethod -Uri $uri -Headers $headers -Method Post -Body $json;
+    }
+}
+
+function Get-Field 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [String] $name,
+
+        [Parameter(Mandatory=$true)]
+        [string] $level,
+
+        [Parameter(Mandatory=$true)]
+        [string] $dataType,
+
+        [string[]] $pickListValues,
+        [bool] $allowCustomValues = $false,
+        [bool] $allowMultiple = $true,
+        [bool] $isMandatory = $false
+    )
+
+    return [ordered]@{
+        name = $name
+        level = $level 
+        dataType = $dataType
+        description = $description
+        pickListValues = @($pickListValues)
+        allowCustomValues = $allowCustomValues 
+        allowMultiple = $allowMultiple
+        isMandatory = $isMandatory
     }
 }
 
@@ -308,6 +496,70 @@ function Get-RequestHeader
     return $headers;
 }
 
+function Format-Fields 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $fields
+    )
+
+    $output = @() 
+
+    foreach ($field in $fields)
+    {
+        $fieldModel = @{
+            name = $field.name
+            level = $field.level
+            dataType = $field.dataType 
+            allowCustomValues = $field.allowCustomValues
+            allowMultiple = $field.allowMultiple
+            isMandatory = $field.isMandatory
+        }
+
+        if ($field.dataType -eq "pickList")
+        {
+            $fieldModel.pickListValues = @($field.pickListValues)
+        }
+
+        $output += $fieldModel;
+    }
+
+    return $output;
+}
+
+function ConvertTo-TermbaseStructure 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $pathToXDT
+    )
+
+    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+    $headers.Add("X-LC-Tenant", $accessKey.tenant)
+    $headers.Add("Content-Type", "multipart/form-data")
+    $headers.Add("Accept", "application/json")
+    $headers.Add("Authorization", $accessKey.token)
+
+    $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
+    $multipartFile = $pathToXDT
+    $FileStream = [System.IO.FileStream]::new($multipartFile, [System.IO.FileMode]::Open)
+    $fileHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
+    $fileHeader.Name = "file"
+    $fileHeader.FileName = $pathToXDT
+    $fileContent = [System.Net.Http.StreamContent]::new($FileStream)
+    $fileContent.Headers.ContentDisposition = $fileHeader
+    $multipartContent.Add($fileContent)
+
+    $body = $multipartContent
+
+    return Invoke-SafeMethod {
+        Invoke-RestMethod 'https://lc-api.sdl.com/public-api/v1/termbase-templates/convert-xdt?fields=languages.languageCode, fields.name,fields.level, fields.dataType, fields.pickListValues,fields.allowCustomValues,fields.allowMultiple,fields.isMandatory' -Method 'POST' -Headers $headers -Body $body
+    }
+}
+
 Export-ModuleMember Get-AllTermbases;
 Export-ModuleMember Get-Termbase;
 Export-ModuleMember New-Termbase;
@@ -315,3 +567,5 @@ Export-ModuleMember Remove-Termbase;
 Export-ModuleMember Get-AllTermbaseTemplates;
 Export-ModuleMember Get-TermbaseTemplate;
 Export-ModuleMember Remove-TermbaseTemplate;
+Export-ModuleMember New-TermbaseTemplate;
+Export-ModuleMember Get-Field;
