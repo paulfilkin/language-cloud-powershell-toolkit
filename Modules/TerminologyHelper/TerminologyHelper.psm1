@@ -160,6 +160,66 @@ function Remove-Termbase
     }
 }
 
+function Update-Termbase 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $termbaseId,
+        [string] $termbaseName,
+
+        [string] $name,
+        [string] $description,
+        [string] $copyRight,
+        [string[]] $languageCodes,
+        [psobject[]] $fields
+    )
+
+    $termbase = Get-Termbase -accessKey $accessKey -termbaseId $termbaseId -termbaseName $termbaseName;
+    if ($null -eq $termbase)
+    {
+        return;
+    }
+
+    $uri = "$baseUri/termbases/$($termbase.Id)";
+    $headers = Get-RequestHeader -accessKey $accessKey;
+    $body = [ordered]@{}
+
+    $termbaseStructure = @{}
+    if ($name)
+    {
+        $body.name = $name
+    }
+    if ($description)
+    {
+        $body.description = $description;
+    }
+    if ($copyRight)
+    {
+        $body.copyright = $copyRight;
+    }
+    if ($languageCodes)
+    {
+        $termbaseStructure.languages = @($languageCodes | ForEach-Object { @{languageCode = $_} })
+    }
+    if ($fields)
+    {
+        $termbaseStructure.fields = $(Format-Fields -fields $fields)
+    }
+
+    if ($termbaseStructure)
+    {
+        $body.termbaseStructure = $termbaseStructure
+    }
+    
+    $json = $body | ConvertTo-Json -Depth 10;
+    Invoke-SafeMethod {
+        $null = Invoke-RestMethod -Uri $uri -Headers $headers -Method Put -Body $json;
+        Write-Host "Termbase template updated successfully" -ForegroundColor Green;
+    }
+}
+
 function Get-AllTermbaseTemplates 
 {
     param (
@@ -318,6 +378,59 @@ function New-TermbaseTemplate
     $json = $body | ConvertTo-Json -Depth 10    
     return Invoke-SafeMethod {
         Invoke-RestMethod -Uri $uri -Headers $headers -Method Post -Body $json;
+    }
+}
+
+function Update-TermbaseTemplate 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $termbaseTemplateId,
+        [string] $termbaseTemplateName,
+
+        [string] $name,
+        [string] $description,
+        [string] $copyRight,
+        [string[]] $languageCodes
+    )
+
+    $termbaseTemplate = Get-TermbaseTemplate -accessKey $accessKey -termbaseTemplateId $termbaseTemplateId -termbaseTemplateName $termbaseTemplateName;
+    if ($null -eq $termbaseTemplate)
+    {
+        return;
+    }
+
+    $uri = "$baseUri/termbase-templates/$($termbaseTemplate.Id)";
+    $headers = Get-RequestHeader -accessKey $accessKey;
+    $body = [ordered]@{}
+
+    if ($name)
+    {
+        $body.name = $name
+    }
+    if ($description)
+    {
+        $body.description = $description;
+    }
+    if ($copyRight)
+    {
+        $body.copyright = $copyRight;
+    }
+    if ($languageCodes)
+    {
+        $body.languages = @($languageCodes | ForEach-Object { @{languageCode = $_} })
+    }
+    if ($fields)
+    {
+        $body.fields = @(Format-Fields -fields $fields)
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10;
+    Invoke-SafeMethod {
+        $null = Invoke-RestMethod -Uri $uri -Headers $headers -Method Put -Body $json;
+        Write-Host "Termbase template updated successfully" -ForegroundColor Green;
     }
 }
 
@@ -538,7 +651,7 @@ function ConvertTo-TermbaseStructure
     )
 
     $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-    $headers.Add("X-LC-Tenant", $accessKey.tenant)
+    $headers.Add("X-LC-Tenant", $accessKey.tenant) 
     $headers.Add("Content-Type", "multipart/form-data")
     $headers.Add("Accept", "application/json")
     $headers.Add("Authorization", $accessKey.token)
@@ -568,4 +681,5 @@ Export-ModuleMember Get-AllTermbaseTemplates;
 Export-ModuleMember Get-TermbaseTemplate;
 Export-ModuleMember Remove-TermbaseTemplate;
 Export-ModuleMember New-TermbaseTemplate;
+Export-ModuleMember Update-TermbaseTemplate;
 Export-ModuleMember Get-Field;
