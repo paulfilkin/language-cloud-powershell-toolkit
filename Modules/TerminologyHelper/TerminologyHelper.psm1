@@ -356,6 +356,29 @@ function Export-Termbase
     }
 }
 
+function Get-AllTermbaseEntries 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $termbaseId,
+        [string] $termbaseName
+    )
+
+    $termbase = Get-Termbase -accessKey $accessKey -termbaseId $termbaseId -termbaseName $termbaseName;
+    if ($null -eq $termbase)
+    {
+        return;
+    }
+
+    $uri = "$baseUri/termbases/$($termbase.Id)/entries?fields=languages,termbaseFieldValues"
+    $headers = Get-RequestHeader -accessKey $accessKey;
+
+    $response = Invoke-RestMethod -uri $uri -Headers $headers;
+    return $response.items;
+}
+
 function Get-AllTermbaseTemplates 
 {
     param (
@@ -815,6 +838,7 @@ Export-ModuleMember New-Termbase;
 Export-ModuleMember Remove-Termbase;
 Export-ModuleMember Import-Termbase;
 Export-ModuleMember Export-Termbase;
+Export-ModuleMember Get-AllTermbaseEntries;
 Export-ModuleMember Get-AllTermbaseTemplates;
 Export-ModuleMember Get-TermbaseTemplate;
 Export-ModuleMember Remove-TermbaseTemplate;

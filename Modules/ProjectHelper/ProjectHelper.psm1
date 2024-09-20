@@ -102,49 +102,88 @@ function New-Project
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
 
-        [Parameter(mandatory=$true)]
-        [String] $projectName,
-
-        [Parameter(mandatory=$true)]
-        [String] $projectDueDate,
-
         [Parameter(Mandatory=$true)]
-        [String] $filesPath,
+        [string] $name,
 
-        [String[]] $referenceFileNames,
-        [String] $sourceLanguage,
-        [String[]] $targetLanguages,
-        [String] $customer,
-        [String] $location,
-        [String] $description,
-        [String] $projectTemplate,
-        [String] $translationEngine,
-        [String] $fileProcessingConfiguration,
-        [String] $workflow,
-        [String] $pricingModel,
-        [Switch] $restrictFileDownloadSpecified,
-        [Bool] $restrictFileDownload = $false, 
-        [String] $scheduletemplate,
-        [String[]] $userManagers,
-        [String[]] $groupsManager,
-        [Bool] $includeSettings = $false,
-        [Int32] $configCompleteDays = 90,
-        [Int32] $configArchiveDays = 90,
-        [Int32] $configReminderDays = 7
+        
+        [PArameter(Mandatory=$true)]
+        [string] $dueDate,
+        
+        [Parameter(Mandatory=$true)]
+        [string] $dueTime,
+        
+        [Parameter(Mandatory=$true)]
+        [string] $filesPath,
+
+        [string[]] $referenceFileNames,
+        
+        [string] $locationId,
+        [string] $locationName,
+        
+        [string] $projectTemplateIdOrName,
+        [string] $fileTypeConfigurationIdOrName,
+        [string] $sourceLanguage,
+        [string[]] $targetLanguages,
+        [string[]] $userManagerIdsOrNames,
+        [string[]] $groupManagerIdsOrNames,
+        [string[]] $customFieldIdsOrNames,
+        [string] $translationEngineIdOrName,
+        [string] $pricingModelIdOrName,
+        [string] $workflowIdOrName,
+        [string] $tqaIdOrName,
+        [string] $scheduleTemplateIdOrName,
+
+        [string] $scheduleTemplateStrategy = "copy",
+        [string] $fileTypeConfigurationStrategy = "copy",
+        [string] $translationEngineStrategy = "copy",
+        [string] $pricingModelStrategy = "copy",
+        [string] $workflowStrategy = "copy",
+        [string] $tqaStrategy = "copy",
+        [bool] $includeFileDownloadSettings = $false,
+        [bool] $restrictFileDownload = $false,
+        [bool] $inclueGeneralSettings,
+        [int] $completeDays = 90,
+        [int] $archiveDays = 90,
+        [int] $archiveReminderDays = 7,
+        [string] $description
     )
 
-    $projectBody = Get-ProjectBody -accessKey $accessKey -name $projectName -dueBy $projectDueDate `
-                                   -sourceLanguage $sourceLanguage -targetLanguages $targetLanguages `
-                                   -customerName $customer -location $location -description $description `
-                                   -projectTemplate $projectTemplate -translationEngine $translationEngine `
-                                   -fileProcessingConfiguration $fileProcessingConfiguration -workflow $workflow `
-                                   -pricingModel $pricingModel -scheduletemplate $scheduletemplate `
-                                   -restrictFileDownload $restrictFileDownload -userManagers $userManagers `
-                                   -groupManagers $groupsManager -includeSettings $includeSettings `
-                                   -configCompleteDays $configCompleteDays -configArchiveDays $configArchiveDays `
-                                   -configReminderDays $configReminderDays -restrictFileDownloadSpecified $restrictFileDownloadSpecified
+    $projectBody = Get-ProjectBody `
+        -accessKey $accessKey `
+        -name $name `
+        -projectTemplateIdOrName $projectTemplateIdOrName `
+        -dueDate $dueDate `
+        -dueTime $dueTime `
+        -locationId $locationId `
+        -locationName $locationName `
+        -fileTypeConfigurationIdOrName $fileTypeConfigurationIdOrName `
+        -sourceLanguage $sourceLanguage `
+        -targetLanguages $targetLanguages `
+        -userManagerIdsOrNames $userManagerIdsOrNames `
+        -groupManagerIdsOrNames $groupManagerIdsOrNames `
+        -customFieldIdsOrNames $customFieldIdsOrNames `
+        -translationEngineIdOrName $translationEngineIdOrName `
+        -pricingModelIdOrName $pricingModelIdOrName `
+        -workflowIdOrName $workflowIdOrName `
+        -tqaIdOrName $tqaIdOrName `
+        -scheduleTemplateIdOrName $scheduleTemplateIdOrName `
+        -scheduleTemplateStrategy $scheduleTemplateStrategy `
+        -fileTypeConfigurationStrategy $fileTypeConfigurationStrategy `
+        -translationEngineStrategy $translationEngineStrategy `
+        -pricingModelStrategy $pricingModelStrategy `
+        -workflowStrategy $workflowStrategy `
+        -tqaStrategy $tqaStrategy `
+        -includeFileDownloadSettings $includeFileDownloadSettings `
+        -restrictFileDownload $restrictFileDownload `
+        -inclueGeneralSettings $includeFileDownloadSettings `
+        -completeDays $completeDays `
+        -archiveDays $archiveDays `
+        -archiveReminderDays $archiveReminderDays `
+        -description $description;
 
+    # return @($projectBody | ConvertTo-Json -Depth 10);
     $projectCreateResponse = Get-ProjectCreationRequest -accessKey $accessKey -project $projectBody
+
     Write-Host "Creating the project..." -ForegroundColor Green
 
     if ($null -eq $projectCreateResponse)
@@ -172,7 +211,9 @@ function Start-Project
     $headers.Add("Accept", "application/json")
     $headers.Add("Authorization", $accessKey.token)
 
-    return Invoke-RestMethod "https://lc-api.sdl.com/public-api/v1/projects/$projectId/start" -Method 'PUT' -Headers $headers
+    return Invoke-SafeMethod -method {
+        Invoke-RestMethod -Uri "https://lc-api.sdl.com/public-api/v1/projects/$projectId/start" -Method Put     -Headers $headers
+    }
 }
 
 function Add-File
@@ -210,13 +251,9 @@ function Add-File
 
     $body = $multipartContent
     
-    try {
-     $null = Invoke-RestMethod "https://lc-api.sdl.com/public-api/v1/projects/$projectId/source-files" -Method 'POST' -Headers $headers -Body $body
-     Write-Host "File [" $file.Name "] added" -ForegroundColor Green
-    }
-    catch 
-    {
-        Write-Host "Error adding the file" $file.Name "$_." -ForegroundColor Red
+    Invoke-SafeMethod {
+        $null = Invoke-RestMethod "https://lc-api.sdl.com/public-api/v1/projects/$projectId/source-files" -Method 'POST' -Headers $headers -Body $body
+        Write-Host "File [" $file.Name "] added" -ForegroundColor Green
     }
 }
 
@@ -285,80 +322,316 @@ function Add-SourceFiles
 function Get-ProjectBody
 {
     param (
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
-        [String] $name,
-        [String] $dueBy,
-        [String] $sourceLanguage,
-        [String[]] $targetLanguages,
-        [String] $customerName,
-        [string] $location,
-        [String] $description,
-        [String] $projectTemplate,
-        [String] $translationEngine,
-        [String] $fileProcessingConfiguration,
-        [String] $workflow,
-        [String] $pricingModel,
-        [String] $scheduletemplate,
-        [Bool] $restrictFileDownload = $false,
-        [Switch] $restrictFileDownloadSpecified,
-        [String[]] $userManagers,
-        [String[]] $groupManagers,
-        [Bool] $includeSettings = $false,
-        [Int32] $configCompleteDays = 90,
-        [Int32] $configArchiveDays = 90,
-        [Int32] $configReminderDays = 7
+
+        [string] $name,
+        [string] $projectTemplateIdOrName,
+
+        [string] $dueDate,
+        [string] $dueTime,
+        [string] $locationId,
+        [string] $locationName,
+
+        [string] $fileTypeConfigurationIdOrName,
+        [string] $sourceLanguage,
+        [string[]] $targetLanguages,
+        [string[]] $userManagerIdsOrNames,
+        [string[]] $groupManagerIdsOrNames,
+        [string[]] $customFieldIdsOrNames,
+        [string] $translationEngineIdOrName,
+        [string] $pricingModelIdOrName,
+        [string] $workflowIdOrName,
+        [string] $tqaIdOrName,
+        [string] $scheduleTemplateIdOrName,
+
+        [string] $scheduleTemplateStrategy = "copy",
+        [string] $fileTypeConfigurationStrategy = "copy",
+        [string] $translationEngineStrategy = "copy",
+        [string] $pricingModelStrategy = "copy",
+        [string] $workflowStrategy = "copy",
+        [string] $tqaStrategy = "copy",
+        [bool] $includeFileDownloadSettings = $false,
+        [bool] $restrictFileDownload = $false,
+        [bool] $inclueGeneralSettings,
+        [int] $completeDays = 90,
+        [int] $archiveDays = 90,
+        [int] $archiveReminderDays = 7,
+        [string] $description
     )
-
-    $project = [ordered]@{
-        "name" = $name
-        "dueBy" = $dueBy
-        "languageDirections" = @($(Get-LanguageDirections $sourceLanguage $targetLanguages))
-        "description" = $description
-    }
-
-    if ($customerName)
-    {
-        $customerObject = Get-ResourceByNameOrId -accessKey $accessKey -resourceIdOrName $customerName -resourceType "Customer"
-        $project.location = $customerObject.location.id
-    }
-    elseif ($location) 
-    {
-        $locationObject = Get-ResourceByNameOrId -accessKey $accessKey -resourceIdOrName $location -resourceType "Location"
-        $project.location = $locationObject.id;
-    }
-
-    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $projectTemplate -resourceType "ProjectTemplate" -propertyName "projectTemplate"
-    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $translationEngine -resourceType "TranslationEngine" -propertyName "translationEngine"
-    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $fileProcessingConfiguration -resourceType "FileProcessingConfiguration" -propertyName "fileProcessingConfiguration"
-    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $workflow -resourceType "Workflow" -propertyName "workflow"
-    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $pricingModel -resourceType "PricingModel" -propertyName "pricingModel"
-    Get-And-AssignResource -accessKey $accessKey -project $project -resourceName $scheduleTemplate -resourceType "ScheduleTemplate" -propertyName "scheduleTemplate"
-    Get-And-AssignProjectManagers -accessKey $accessKey -project $project -userManagers $userManagers -groupsManagers $groupManagers
-
-    if ($projectTemplate -and $project.languageDirections.Count -eq 0) {
-        $templateObject = Get-ResourceByNameOrId $accessKey $projectTemplate "projectTemplate"
-        $project.languageDirections = $templateObject.languageDirections
-    }
     
-    if ($restrictFileDownloadSpecified)
-    {
-        $project.forceOnline = $restrictFileDownload.ToString().ToLower();
+    $body = [ordered]@{
+        name = $name
+        description = $description
+        dueBy = $dueDate + "T" + $dueTime + "Z"
     }
-    
-    if ($includeSettings)
+
+    $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+    if ($location)
     {
-        $projectsettings = @{
-            "general" = @{
-                "completeDays" = $configCompleteDays
-                "archiveDays" = $configArchiveDays
-                "archiveReminderDays" = $configReminderDays
-            } 
+        $body.location = $location.Id
+    }
+    else 
+    {
+        return;
+    }
+
+    if ($projectTemplateIdOrName)
+    {
+        $projectTemplate = Get-AllProjectTemplates -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                        | Where-Object {$_.Id -eq $projectTemplateIdOrName -or $_.Name -eq $projectTemplateIdOrName } `
+                        | Select-Object -First 1;
+
+        if ($null -eq $projectTemplate)
+        {
+            Write-Host "Project Template does not exist or it is not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
         }
 
-        $project.settings = $projectsettings;
+        $body.projectTemplate = @{id = $projectTemplate.Id}
     }
 
-    return $project
+    if ($fileTypeConfigurationIdOrName)
+    {
+        $fileTypeConfiguration = Get-AllFileTypeConfigurations -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                            | Where-Object {$_.Id -eq $fileTypeConfigurationIdOrName -or $_.Name -eq $fileTypeConfigurationIdOrName } `
+                            | Select-Object -First 1;
+    
+        if ($null -eq $fileTypeConfiguration)
+        {
+            Write-Host "File Type configuration does not exist or it is not related to the location $($location.Name)" -ForegroundColor Green;
+            return
+        }
+        $body.fileProcessingConfiguration = @{
+            id = $fileTypeConfiguration.Id
+            strategy = $fileTypeConfigurationStrategy
+        }
+    }
+
+    if ($sourceLanguage -and $targetLanguages)
+    {
+        $languageDirections = Get-LanguageDirections -sourceLanguage $sourceLanguage -targetLanguages $targetLanguages -languagePairs $languagePairs;
+        if ($null -eq $languageDirections)  
+        {
+            Write-Host "Invalid languages" -ForegroundColor;
+            return;
+        }
+
+        $body.languageDirections = @($languageDirections);
+    }
+
+    if ($translationEngineIdOrName)
+    {
+        $translationEngine = Get-AllTranslationEngines -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                            | Where-Object {$_.Id -eq $translationEngineIdOrName -or $_.Name -eq $translationEngineIdOrName} `
+                            | Select-Object -First 1;
+        
+        if ($null -eq $translationEngine)
+        {
+            Write-Host "Translation Engine not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.translationEngine = [ordered] @{
+            id = $translationEngine.Id
+            strategy = $translationEngineStrategy
+        }
+    }
+
+    if ($pricingModelIdOrName)
+    {
+        $pricingModel = Get-AllPricingModels -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                        | Where-Object {$_.id -eq $pricingModelIdOrName -or $_.name -eq $pricingModelIdOrName } `
+                        | Select-Object -First 1;
+
+        if ($null -eq $pricingModel)
+        {
+            Write-Host "Pricing Model not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.pricingModel = [ordered] @{
+            id = $pricingModel.Id
+            strategy = $pricingModelStrategy
+        }
+    }
+
+    if ($workflowIdOrName)
+    {
+        $workflow = Get-AllWorkflows -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                    | Where-Object {$_.Id -eq $workflowIdOrName -or $_.Name -eq $workflowIdOrName } `
+                    | Select-Object -First 1;
+
+        if ($null -eq $workflow)
+        {
+            Write-Host "Workflow not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.workflow = [ordered] @{
+            id = $workflow.Id 
+            strategy = $workflowStrategy
+        }
+    }
+
+    if ($tqaIdOrName)
+    {
+        $tqa = Get-AllTranslationQualityAssessments -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                    | Where-Object {$_.id -eq $tqaIdOrName -or $_.name -eq $tqaIdOrName } `
+                    | Select-Object -First 1;
+
+        if ($null -eq $tqa)
+        {
+            Write-Host "Translation Quality Assessment not found or not related to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.tqaProfile = [ordered]@{
+            id = $tqa.Id 
+            strategy = $tqaStrategy
+        }
+    }
+
+    if ($scheduleTemplateIdOrName)
+    {
+        $scheduleTemplate = Get-AllScheduleTemplates -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                        | Where-Object {$_.Id -eq $scheduleTemplateIdOrName -or $_.Name -eq $scheduleTemplateIdOrName } `
+                        | Select-Object -First 1
+
+        if ($null -eq $scheduleTemplate)
+        {
+            Write-Host "Schedule Template not found or not relate to the location $($location.Name)" -ForegroundColor Green;
+            return;
+        }
+
+        $body.scheduleTemplate = @{
+            id = $scheduleTemplate.Id 
+            strategy = $scheduleTemplateStrategy
+        }
+    }
+
+    $projectManagers = @();
+    if ($userManagerIdsOrNames)
+    {
+        $users = Get-AllUsers -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                    | Where-Object {$_.id -in $userManagerIdsOrNames -or $_.email -in $userManagerIdsOrNames} `
+                    | Select-Object -First 1;
+
+        if ($null -eq $users -or $users.Count -ne $userManagerIdsOrNames.Count) {   
+            $missingUsers = $userManagerIdsOrNames | Where-Object { $_ -notin $users.id -and $_ -notin $users.email }
+            
+            Write-Host "The following user IDs or emails were not found or are not related with the location $($location.Id): $missingUsers" -ForegroundColor Green;
+            return;
+        }
+
+        # Create a list of users with "id" and "type" = "user"
+        $userList = $users | ForEach-Object {
+            [PSCustomObject]@{
+                id   = $_.id
+                type = "user"
+            }
+
+        }
+
+        $projectManagers += $userList;
+    }   
+
+    if ($groupManagerIdsOrNames)
+    {
+        $groups = Get-AllGroups -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
+                    | Where-Object {$_.Id -in $groupManagerIdsOrNames -or $_.Name -in $groupManagerIdsOrNames} `
+                    | Select-Object -First 1
+
+        if ($null -eq $groups -or $groups.Count -ne $groupManagerIdsOrNames.Count) 
+        {   
+            $missingGroups = $groupManagerIdsOrNames | Where-Object { $_ -notin $groups.id -and $_ -notin $groups.email }
+            
+            Write-Host "The following group IDs or names were not found or are not related with the location $($location.Id): $missingGroups" -ForegroundColor Green;
+            return;
+        }
+
+        # Create a list of users with "id" and "type" = "user"
+        $grouList = $groups | ForEach-Object {
+            [PSCustomObject]@{
+                id   = $_.id
+                type = "group"
+            }
+
+        }
+
+        $projectManagers += $grouList;
+    }
+
+    if ($projectManagers)
+    {
+        $body.projectManagers = @($projectManagers);
+    }
+
+    if ($customFieldIdsOrNames)
+    {
+        $customFields = Get-AllCustomFields -accessKey $accessKey -locationId $customer.Location.Id -locationStrategy "bloodline" `
+                            | Where-Object {$_.Id -in $customFieldIdsOrNames -or $_.Name -in $customFieldIdsOrNames } `
+                            | Where-Object {$_.ResourceType -eq "Project"} 
+        
+        if ($null -eq $customFields -or
+            $customFields.Count -ne $customFieldIdsOrNames.Count)
+        {   
+            $missingFields = $customFieldIdsOrNames | Where-Object { $_ -notin $customFields.Id -and $_ -notin $customFields.Name }
+            Write-Host "The following custom fields were not found: $missingFields" -ForegroundColor Green;
+            return;
+        }
+
+        $fieldDefinitions = @();
+        foreach ($customField in $customFields)
+        {
+            $fieldDefinition = [ordered] @{
+            };
+            if ($customField.defaultValue)
+            {
+                $fieldDefinition.key = $customField.key
+                $fieldDefinition.value = $customField.defaultValue;
+            }
+            else 
+            {
+                Write-Host "Enter the key for Custom Field $($customField.Name) of type $($customField.Type)" -ForegroundColor Yellow
+                if ($customField.pickListOptions)
+                {
+                    foreach ($pickList in $customField.pickListOptions)
+                    {
+                        Write-Host $pickList -ForegroundColor DarkYellow;
+                    }
+                }
+
+                $fieldDefinition.key = $customField.key;
+                $fieldDefinition.value = Read-Host 
+            }
+
+            $fieldDefinitions += $fieldDefinition;
+        }
+
+        $body.customFields = @($fieldDefinitions);
+    }
+
+    if ($includeFileDownloadSettings)
+    {
+        $body.forceOnline = $restrictFileDownload
+    }
+
+    if ($includeSettings)
+    {
+        $project.settings = [ordered]@{
+            general = [ordered] @{
+                forceOnline = $restrictFileDownload
+                completeConfiguration = [ordered] @{
+                    completeDays = $completeDays 
+                    archiveDays = $archiveDays 
+                    archiveReminderDays = $archiveReminderDays
+                }
+            }
+        }
+    }
+
+    return $body
 }
 
 function Get-ProjectCreationRequest 
@@ -368,19 +641,15 @@ function Get-ProjectCreationRequest
         [psobject] $project
     )
 
-    $json = $project | ConvertTo-Json -Depth 5;
+    $json = $project | ConvertTo-Json -Depth 10;
     $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
     $headers.Add("X-LC-Tenant", $accessKey.tenant)
     $headers.Add("Content-Type", "application/json")
     $headers.Add("Accept", "application/json")
     $headers.Add("Authorization", $accessKey.token)
 
-    try 
-    {
-        return Invoke-RestMethod 'https://lc-api.sdl.com/public-api/v1/projects' -Method 'POST' -Headers $headers -Body $json;
-    }
-    catch {
-        Write-Host "$_"
+    return Invoke-SafeMethod {
+        Invoke-RestMethod 'https://lc-api.sdl.com/public-api/v1/projects' -Method 'POST' -Headers $headers -Body $json;
     }
 }
 
@@ -520,6 +789,50 @@ function Get-Items
     {
         return & $resourceFunctions[$resourceType] $accessKey
     }
+}
+
+
+function Get-LanguageDirections 
+{
+    param (
+        [String[]] $sourceLanguage,
+        [String[]] $targetLanguages
+    )
+
+    $languageDirections = @();
+    if ($sourceLanguage -and $targetLanguages)
+    {
+        foreach ($target in $targetLanguages)
+        {
+    
+            $languageDirection = [ordered]@{
+                sourceLanguage = [ordered]@{languageCode = "$sourceLanguage"}
+                targetLanguage = [ordered]@{languageCode = "$target"}
+            }
+            
+            $languageDirections += $languageDirection;
+        }
+    
+    }
+
+    return $languageDirections;
+}
+
+function Invoke-SafeMethod 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [scriptblock] $method
+    )
+
+    try {
+        return & $Method
+    } catch {
+        $response = ConvertFrom-Json $_;
+        Write-Host $response.Message -ForegroundColor Green;
+        return $null
+    }
+
 }
 
 Export-ModuleMember New-Project;
