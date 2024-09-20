@@ -212,11 +212,147 @@ function Update-Termbase
     {
         $body.termbaseStructure = $termbaseStructure
     }
-    
+
     $json = $body | ConvertTo-Json -Depth 10;
     Invoke-SafeMethod {
         $null = Invoke-RestMethod -Uri $uri -Headers $headers -Method Put -Body $json;
         Write-Host "Termbase template updated successfully" -ForegroundColor Green;
+    }
+}
+
+function Import-Termbase 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $pathToTermbase,
+
+        [string] $termbaseId,
+        [string] $termbaseName,
+
+        [string] $duplicateEntriesStrategy = "overwrite",
+        [bool] $strictImport = $true
+        )
+
+        $termbase = Get-Termbase -accessKey $accessKey -termbaseId $termbaseId -termbaseName $termbaseName;
+        if ($null -eq $termbase)
+        {
+            return;
+        }
+
+        $uri = "$baseUri/termbases/$($termbase.Id)/imports?strictImport=$strictImport&duplicateEntriesStrategy=$duplicateEntriesStrategy";
+        $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+        $headers.Add("X-LC-Tenant", $accessKey.tenant)
+        $headers.Add("Content-Type", "multipart/form-data")
+        $headers.Add("Accept", "application/json")
+        $headers.Add("Authorization", $accessKey.token)
+
+        $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
+        $multipartFile = $pathToTermbase
+        $FileStream = [System.IO.FileStream]::new($multipartFile, [System.IO.FileMode]::Open)
+        $fileHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
+        $fileHeader.Name = "file"
+        $fileHeader.FileName = $pathToTermbase
+        $fileContent = [System.Net.Http.StreamContent]::new($FileStream)
+        $fileContent.Headers.ContentDisposition = $fileHeader
+        $multipartContent.Add($fileContent)
+
+        $body = $multipartContent
+
+        $response = Invoke-SafeMethod {
+            return Invoke-RestMethod -Uri $uri -Method 'POST' -Headers $headers -Body $body
+        }
+
+        if ($response)
+        {
+            $pollUri = "$baseUri/termbases/$($termbase.Id)/imports/$($response.Id)";
+            $queueStatus = Invoke-SafeMethod {
+                Invoke-RestMethod -uri $pollUri -Headers $headers
+            }
+
+        }
+
+        while ($queueStatus)
+        {
+            Start-Sleep -Seconds 1;
+            if ($queueStatus.Status -ne "queued")
+            {
+                Write-Host "Import Status $($queueStatus.Status)" -ForegroundColor Green;
+                return;
+            } 
+
+            $queueStatus = Invoke-SafeMethod {
+                Invoke-RestMethod -uri $pollUri -Headers $headers
+            }
+        }
+}
+
+function Export-Termbase
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $termbaseId,
+        [string] $termbaseName,
+
+        [Parameter(Mandatory=$true)]
+        [string] $pathToExport,
+
+        [string] $format = "tbx",
+        [bool] $downloadCompressed = $false
+    )
+
+    
+    $termbase = Get-Termbase -accessKey $accessKey -termbaseId $termbaseId -termbaseName $termbaseName;
+    if ($null -eq $termbase)
+    {
+        return;
+    }
+
+    $uri = "$baseUri/termbases/$($termbase.Id)/exports";
+    $body = [ordered]@{
+        format = $format
+        properties = @{
+            downloadCompressed = $downloadCompressed
+        }
+    }
+    $json = $body | ConvertTo-Json -Depth 5;
+
+    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+    $headers.Add("X-LC-Tenant", $accessKey.tenant)
+    $headers.Add("Content-Type", "application/json")
+    $headers.Add("Accept", "application/json")
+    $headers.Add("Authorization", $accessKey.token)
+
+
+    $response = Invoke-SafeMethod {
+        Invoke-RestMethod -uri $uri -Method 'POST' -Headers $headers -Body $json
+    } 
+
+    if ($response)
+    {
+        $pollUri = "$baseUri/termbases/$($termbase.Id)/exports/$($response.Id)";
+        $queueStatus = Invoke-SafeMethod {
+            Invoke-RestMethod -uri $pollUri -Headers $headers
+        }
+    }
+
+    while ($queueStatus)
+    {
+        Start-Sleep -Seconds 1;
+        if ($queueStatus.Status -ne "queued")
+        {
+            return Invoke-SafeMethod {
+                Invoke-RestMethod -Uri "$baseUri/termbases/$($termbase.Id)/exports/$($response.Id)/download" -Headers $headers -OutFile "$($pathToExport).$($format)";
+            }
+        } 
+
+        $queueStatus = Invoke-SafeMethod {
+            Invoke-RestMethod -uri $pollUri -Headers $headers
+        }
     }
 }
 
@@ -677,6 +813,8 @@ Export-ModuleMember Get-AllTermbases;
 Export-ModuleMember Get-Termbase;
 Export-ModuleMember New-Termbase;
 Export-ModuleMember Remove-Termbase;
+Export-ModuleMember Import-Termbase;
+Export-ModuleMember Export-Termbase;
 Export-ModuleMember Get-AllTermbaseTemplates;
 Export-ModuleMember Get-TermbaseTemplate;
 Export-ModuleMember Remove-TermbaseTemplate;
