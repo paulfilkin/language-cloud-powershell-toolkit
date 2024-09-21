@@ -474,7 +474,7 @@ function Get-ProjectBody
             return;
         }
 
-        $languages += $languageDirections;
+        $languages = @($languageDirections);
     }
 
     if ($translationEngineIdOrName)
@@ -715,56 +715,6 @@ function Get-ProjectCreationRequest
     }
 }
 
-function Get-And-AssignProjectManagers
-{
-    param (
-        [psobject] $accessKey,
-        [psobject] $project,
-        [string[]] $userManagers,
-        [string[]] $groupsManagers
-    )
-
-    $managers = @();
-    if ($userManagers)
-    {
-        $users = Get-Items -accessKey $accessKey -resourceType "User";
-        
-        foreach ($manager in $userManagers) {
-            $matchingUser = $users | Where-Object { 
-                $_.id -eq $manager -or ($_.email -and $_.email -eq $manager) 
-            }
-            
-            foreach ($user in $matchingUser) {
-                $managers += @{
-                    "id"   = $user.id
-                    "type" = "user"
-                }
-            }
-        }
-    }
-
-    if ($groupManagers) {
-        $groups = Get-Items -accessKey $accessKey -resourceType "Group"
-    
-        foreach ($manager in $groupManagers) {
-            $matchingGroup = $groups | Where-Object {
-                $_.id -eq $manager -or $_.name -eq $manager
-            }
-            
-            foreach ($group in $matchingGroup) {
-                $managers += @{
-                    "id"   = $group.id
-                    "type" = "group"
-                }
-            }
-        }
-    }
-
-    if ($managers.Count -gt 0) {
-        $project["projectManagers"] = @($managers)
-    }
-}
-
 function Get-LanguageDirections 
 {
     param (
@@ -787,72 +737,6 @@ function Get-LanguageDirections
 
     return $result;
 }
-
-function Get-And-AssignResource
-{
-    param (
-        [psobject] $accessKey,
-        [psobject] $project,
-        [string] $resourceName,
-        [string] $resourceType,
-        [String] $propertyName
-    )
-
-    if ($resourceName)
-    {
-        $resource = Get-ResourceByNameOrId $accessKey $resourceName $resourceType
-        $project[$propertyName] = @{
-            "id" = $resource.Id
-            "strategy" = "copy"
-        }
-
-    }
-}
-
-function Get-ResourceByNameOrId
-{
-    param (
-        [psobject] $accessKey,
-        [String] $resourceIdOrName,
-        [String] $resourceType
-    )
-
-    $items = Get-Items $accessKey $resourceType;
-    foreach ($item in $items)
-    {
-        if ($item.Name -eq $resourceIdOrName -or $item.Id -eq $resourceIdOrName)
-        {
-            return $item;
-        }
-    }
-}
-
-function Get-Items 
-{
-    param (
-        [psobject] $accessKey,
-        [String] $resourceType
-    )
-
-    $resourceFunctions =  @{
-        "Customer"                 = "Get-AllCustomers"
-        "ProjectTemplate"          = "Get-AllProjectTemplates"
-        "TranslationEngine"        = "Get-AllTranslationEngines"
-        "FileProcessingConfiguration" = "Get-AllFileTypeConfigurations"
-        "Workflow"                 = "Get-AllWorkflows"
-        "PricingModel"             = "Get-AllPricingModels"
-        "ScheduleTemplate"         = "Get-AllScheduleTemplates"
-        "User"                     = "Get-AllUsers"
-        "Group"                    = "Get-AllGroups"
-        "Location"                 = "Get-AllLocations"
-    }
-
-    if ($resourceFunctions.ContainsKey($resourceType)) 
-    {
-        return & $resourceFunctions[$resourceType] $accessKey
-    }
-}
-
 
 function Get-LanguageDirections 
 {
