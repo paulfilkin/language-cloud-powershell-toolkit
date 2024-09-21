@@ -123,6 +123,134 @@ function Get-ProjectTemplate
                     -id $projectTemplateId -name $projectTemplateName -propertyName "Project template";
 }
 
+<#
+.SYNOPSIS
+    Creates a new project template based on specified configurations and dependencies.
+
+.DESCRIPTION
+    The `New-ProjectTemplate` function allows you to create a new project template, including specifying dependencies and settings that are related to a particular location.
+    All dependencies must have a bloodline relationship with the specified location of the project template.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to create the project template.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER projectTemplateName
+    (Mandatory) The name of the project template to be created.
+
+.PARAMETER locationId
+    (Optional) The ID of the location where the project template will be associated. 
+    This is necessary for ensuring that dependencies are correctly related.
+
+.PARAMETER locationName
+    (Optional) The name of the location where the project template will be associated. 
+    This can be used instead of `locationId`.
+
+.PARAMETER fileTypeConfigurationIdOrName
+    (Mandatory) The ID or name of the file type configuration associated with the project template. 
+    This must be in a bloodline relationship with the specified location.
+
+.PARAMETER sourceLanguage
+    (Optional) The source language code for the project template.
+
+.PARAMETER targetLanguages
+    (Optional) An array of target language codes for the project template.
+
+.PARAMETER languagePairs
+    (Optional) An array of language pairs as PowerShell objects, which can be provided when multiple source-target pairs are needed.
+
+    This can be provided when multiple source languages are needed and can be retrieved using the `Get-LanguagePair` method.
+
+.PARAMETER userManagerIdsOrNames
+    (Optional) An array of user manager IDs or names associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER groupManagerIdsOrNames
+    (Optional) An array of group manager IDs or names associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER customFieldIdsOrNames
+    (Optional) An array of custom field IDs or names associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER translationEngineIdOrName
+    (Optional) The ID or name of the translation engine associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER pricingModelIdOrName
+    (Optional) The ID or name of the pricing model associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER workflowIdOrName
+    (Optional) The ID or name of the workflow associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER tqaIdOrName
+    (Optional) The ID or name of the TQA (Translation Quality Assurance) process associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER scheduleTemplateIdOrName
+    (Optional) The ID or name of the schedule template associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER scheduleTemplateStrategy
+    (Optional) The strategy for the schedule template. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER fileTypeConfigurationStrategy
+    (Optional) The strategy for the file type configuration. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER translationEngineStrategy
+    (Optional) The strategy for the translation engine. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER pricingModelStrategy
+    (Optional) The strategy for the pricing model. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER workflowStrategy
+    (Optional) The strategy for the workflow. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER tqaStrategy
+    (Optional) The strategy for the TQA process. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER restrictFileDownload
+    (Optional) A boolean value indicating whether to restrict file download. 
+    Default is $false.
+
+.PARAMETER customerPortalVisibility
+    (Optional) A boolean value indicating whether the project template should be visible in the customer portal. 
+    Default is $true.
+
+.PARAMETER completeDays
+    (Optional) The number of days until the project is considered complete. 
+    Default is 90 days.
+
+.PARAMETER archiveDays
+    (Optional) The number of days until the project is archived. 
+    Default is 90 days.
+
+.PARAMETER archiveReminderDays
+    (Optional) The number of days before a reminder for archiving is sent. 
+    Default is 7 days.
+
+.PARAMETER description
+    (Optional) A description of the project template.
+
+.OUTPUTS
+    Returns the result of the project template creation, including details about the created template or errors encountered.
+
+.EXAMPLE
+    # Example: Create a new project template
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    New-ProjectTemplate -accessKey $accessKey -projectTemplateName "MyProjectTemplate" `
+                        -fileTypeConfigurationIdOrName "FileType123" -sourceLanguage "en-US" `
+                        -targetLanguages @("fr-FR", "de-DE") -description "This is my project template."
+#>
 function New-ProjectTemplate 
 {
     param (
@@ -475,6 +603,134 @@ function Remove-ProjectTemplate
     }
 }
 
+<#
+.SYNOPSIS
+    Updates an existing project template based on specified configurations and dependencies.
+
+.DESCRIPTION
+    The `Update-ProjectTemplate` function allows you to update an existing project template by specifying any parameters you wish to modify.
+    Only the parameters that are provided will be updated, while others will remain unchanged.
+    All dependencies must have a bloodline relationship with the location of the project template.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to update the project template.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER projectTemplateId
+    (Optional) The ID of the project template to be updated. 
+    This parameter is necessary to identify which template to update.
+
+.PARAMETER projectTemplateName
+    (Optional) The name of the project template to be updated.
+
+.PARAMETER name
+    (Optional) The new name for the project template. If provided, the existing name will be updated.
+
+.PARAMETER description
+    (Optional) The new description for the project template. If provided, the existing description will be updated.
+
+.PARAMETER sourceLanguage
+    (Optional) The updated source language code for the project template.
+
+.PARAMETER targetLanguages
+    (Optional) An array of updated target language codes for the project template.
+
+.PARAMETER languagePairs
+    (Optional) An array of updated language pairs as PowerShell objects. 
+    This can be provided to update the source-target pairs in the project template.
+
+    This can be provided when multiple source languages are needed and can be retrieved using the `Get-LanguagePair` method.
+
+.PARAMETER userManagerIdsOrNames
+    (Optional) An array of updated user manager IDs or names associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER groupManagerIdsOrNames
+    (Optional) An array of updated group manager IDs or names associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER customFieldIdsOrNames
+    (Optional) An array of updated custom field IDs or names associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER fileTypeConfigurationIdOrName
+    (Optional) The updated ID or name of the file type configuration associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER translationEngineIdOrName
+    (Optional) The updated ID or name of the translation engine associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER pricingModelIdOrName
+    (Optional) The updated ID or name of the pricing model associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER workflowIdOrName
+    (Optional) The updated ID or name of the workflow associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER tqaIdOrName
+    (Optional) The updated ID or name of the TQA (Translation Quality Assurance) process associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER scheduleTemplateIdOrName
+    (Optional) The updated ID or name of the schedule template associated with the project template. 
+    Must be in a bloodline relationship with the specified location.
+
+.PARAMETER scheduleTemplateStrategy
+    (Optional) The strategy for the schedule template. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER fileTypeConfigurationStrategy
+    (Optional) The strategy for the file type configuration. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER translationEngineStrategy
+    (Optional) The strategy for the translation engine. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER pricingModelStrategy
+    (Optional) The strategy for the pricing model. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER workflowStrategy
+    (Optional) The strategy for the workflow. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER tqaStrategy
+    (Optional) The strategy for the TQA process. 
+    Acceptable values are "copy" or "use". Default is "copy".
+
+.PARAMETER inclueGeneralSettings
+    (Optional) A switch parameter indicating whether to include general settings in the update.
+
+.PARAMETER restrictFileDownload
+    (Optional) A boolean value indicating whether to restrict file download. 
+    Default is $false.
+
+.PARAMETER customerPortalVisibility
+    (Optional) A boolean value indicating whether the project template should be visible in the customer portal. 
+    Default is $true.
+
+.PARAMETER completeDays
+    (Optional) The updated number of days until the project is considered complete. 
+    Default is 90 days.
+
+.PARAMETER archiveDays
+    (Optional) The updated number of days until the project is archived. 
+    Default is 90 days.
+
+.PARAMETER archiveReminderDays
+    (Optional) The updated number of days before a reminder for archiving is sent. 
+    Default is 7 days.
+
+.EXAMPLE
+    # Example: Update an existing project template
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-ProjectTemplate -accessKey $accessKey -projectTemplateId "12345" `
+                            -name "UpdatedProjectTemplate" -description "This is the updated project template."
+#>
 function Update-ProjectTemplate 
 {
     param (
@@ -1391,7 +1647,7 @@ function Get-AllFileTypeConfigurations
     )
 
     $location = @{}
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    if ($locationId -or $locationName) 
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
@@ -1513,7 +1769,7 @@ function Get-AllWorkflows
     )
 
     $location = @{};
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    if ($locationId -or $locationName) 
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
@@ -1630,7 +1886,7 @@ function Get-AllPricingModels
     )
 
     $location = @{};
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    if ($locationId -or $locationName) 
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
@@ -1746,7 +2002,7 @@ function Get-AllScheduleTemplates
     )
 
     $location = @{};
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    if ($locationId -or $locationName) 
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
@@ -2003,7 +2259,7 @@ function Get-AllCustomFields
     )
 
     $location = @{};
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    if ($locationId -or $locationName) 
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
@@ -2121,7 +2377,7 @@ function Get-AllTranslationMemories
     )
 
     $location = @{}
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    if ($locationId -or $locationName) 
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
@@ -2393,7 +2649,7 @@ function Remove-TranslationMemory
     {
         $uri += "/$($tm.Id)"
         Invoke-SafeMethod { 
-            $null = Invoke-RestMethod -uri $uri -Headers $headers -Method Delete; # can be added in a more generic method
+            $null = Invoke-RestMethod -uri $uri -Headers $headers -Method Delete; 
             Write-host "Translation Memory removed" -ForegroundColor Green; }
     }
 }
@@ -2964,7 +3220,7 @@ function Get-AllTranslationQualityAssessments
     )
 
     $location = @{};
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    if ($locationId -or $locationName) 
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
@@ -3079,12 +3335,7 @@ function Get-AllLanguageProcessingRules
     )
 
     $location = @{}
-    if ($locationId -or $locationName) # find a way to shorten this..
-    {
-        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
-    }
-
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    if ($locationId -or $locationName) 
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
@@ -3212,11 +3463,6 @@ function Get-AllFieldTemplates
 
     $location = @{};
     if ($locationId -or $locationName) # find a way to shorten this..
-    {
-        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
-    }
-
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
@@ -3475,6 +3721,7 @@ function Get-FilterString {
 
     # Initialize an empty array for filters
     $filter = @()
+    
     # Check if the parameters are not null or empty, and add them to the filter array
     if (-not [string]::IsNullOrEmpty($name)) {
         $filter += "name=$name"
