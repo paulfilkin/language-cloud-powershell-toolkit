@@ -145,8 +145,8 @@ if ($pricingModels) {
 Start-Sleep -Seconds 3;
 
 # List all customers
-Write-Host "`nListing all customers from the rootLocation:" -ForegroundColor Cyan
-$customers = Get-AllCustomers -accessKey $accessKey -locationId $rootLocation.Id
+Write-Host "`nListing all customers:" -ForegroundColor Cyan
+$customers = Get-AllCustomers -accessKey $accessKey
 if ($customers) {
     for ($i = 0; $i -lt $customers.Count; $i++) {
         Write-Host "[$($i + 1)] $($customers[$i].name) - $($customers[$i].location)" -ForegroundColor Green
@@ -184,8 +184,8 @@ if ($tms)
 Start-Sleep -Seconds 3;
 
 Write-Host "`nCreating a new translation memory" -ForegroundColor Cyan;
-$languageProcessingRule = Get-AllLanguageProcessingRules -accessKey $accessKey | Select-Object -First 1;
-$fieldTemplate = Get-AllFieldTemplates -accessKey $accessKey | Select-Object -First 1;
+$languageProcessingRule = Get-AllLanguageProcessingRules -accessKey $accessKey -locationId $rootLocation.Id -locationStrategy "bloodline" | Select-Object -First 1;
+$fieldTemplate = Get-AllFieldTemplates -accessKey $accessKey -locationId $rootLocation.Id -locationStrategy "bloodline" | Select-Object -First 1;
 if ($languageProcessingRule -and $fieldTemplate)
 {
     $newTM = New-TranslationMemory -accessKey $accessKey -name "Powershell Translation Memory" `
