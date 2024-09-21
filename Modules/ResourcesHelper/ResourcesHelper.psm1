@@ -2,22 +2,52 @@ $baseUri = "https://lc-api.sdl.com/public-api/v1"
 
 <#
 .SYNOPSIS
-Retrieves all project templates available in the system.
+    Retrieves all the project templates from the specified location or strategy.
 
 .DESCRIPTION
-The `Get-AllProjectTemplates` function fetches a list of all project templates from the API, 
-including their IDs, names, descriptions, language directions, and locations. This is useful for 
-understanding the available templates for project creation.
+    The `Get-AllProjectTemplates` function retrieves a list of all project templates available in the specified location or based on the provided strategy.
+    You can optionally provide the location ID or name, and define a strategy to retrieve project templates from specific locations such as subfolders, parent folders, or a combination of both.
+    Additionally, if the `name` parameter is provided, only templates that contain the specified name will be returned along with the other filters.
 
 .PARAMETER accessKey
-The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+    (Mandatory) The access key required for authentication and authorization to query the project templates.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve project templates. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve project templates. You can specify either a location ID or name, but not both.
+
+.PARAMETER name
+    (Optional) The name of the project template to filter the results. Only templates containing this name will be returned along with other filters.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching project templates in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves project templates from the specified location.
+        - "bloodline": Retrieves project templates from the specified location and its parent folders.
+        - "lineage": Retrieves project templates from the specified location and its subfolders.
+        - "genealogy": Retrieves project templates from both subfolders and parent folders of the specified location.
+
+.OUTPUTS
+    Returns a list of project templates containing fields such as ID, name, description, and associated locations.
 
 .EXAMPLE
-$templates = Get-AllProjectTemplates -accessKey $accessKey
-This example retrieves all project templates and stores them in the `$templates` variable.
+    # Example 1: Retrieve all project templates from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllProjectTemplates -accessKey $accessKey
 
-.NOTES
-This function makes a GET request to the project templates API endpoint and returns a collection of project template objects.
+.EXAMPLE
+    # Example 2: Retrieve project templates from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllProjectTemplates -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve project templates from a specific location using the bloodline strategy and filtering by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllProjectTemplates -accessKey $accessKey -locationName "FolderA" -locationStrategy "bloodline" -name "TemplateName"
 #>
 function Get-AllProjectTemplates 
 {
@@ -46,6 +76,39 @@ function Get-AllProjectTemplates
     Get-AllItems -accessKey $accessKey -uri $uri
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific project template by ID or name.
+
+.DESCRIPTION
+    The `Get-ProjectTemplate` function retrieves the details of a specific project template based on the provided project template ID or name.
+    Either the `projectTemplateId` or `projectTemplateName` must be provided to retrieve the project template information.
+    If both parameters are provided, the function will prioritize `projectTemplateId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the project template.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER projectTemplateId
+    (Optional) The ID of the project template to retrieve. Either `projectTemplateId` or `projectTemplateName` must be provided.
+
+.PARAMETER projectTemplateName
+    (Optional) The name of the project template to retrieve. Either `projectTemplateId` or `projectTemplateName` must be provided.
+
+.OUTPUTS
+    Returns the specified project template with fields such as ID, name, description, and associated configurations.
+
+.EXAMPLE
+    # Example 1: Retrieve a project template by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-ProjectTemplate -accessKey $accessKey -projectTemplateId "67890"
+
+.EXAMPLE
+    # Example 2: Retrieve a project template by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-ProjectTemplate -accessKey $accessKey -projectTemplateName "MyProjectTemplate"
+#>
 function Get-ProjectTemplate 
 {
     param (
@@ -355,6 +418,41 @@ function New-ProjectTemplate
     }
 }
 
+<#
+.SYNOPSIS
+    Removes a specified project template from the system.
+
+.DESCRIPTION
+    The `Remove-ProjectTemplate` function deletes a project template identified by either its ID or name. 
+    The function first retrieves the project template using the provided credentials, then constructs the URI 
+    for the deletion request and invokes the delete method. If the project template is successfully removed, 
+    a confirmation message is displayed.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to delete the project template.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER projectTemplateId
+    (Optional) The ID of the project template to be removed. Either `projectTemplateId` or `projectTemplateName` must be provided.
+
+.PARAMETER projectTemplateName
+    (Optional) The name of the project template to be removed. Either `projectTemplateId` or `projectTemplateName` must be provided.
+
+.OUTPUTS
+    If the project template is successfully removed, a confirmation message will be printed to the console. 
+    No output will be returned from the function itself.
+
+.EXAMPLE
+    # Example 1: Remove a project template by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-ProjectTemplate -accessKey $accessKey -projectTemplateId "67890"
+
+.EXAMPLE
+    # Example 2: Remove a project template by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-ProjectTemplate -accessKey $accessKey -projectTemplateName "SampleProjectTemplate"
+#>
 function Remove-ProjectTemplate
 {
     param (
@@ -675,22 +773,52 @@ function Update-ProjectTemplate
 
 <#
 .SYNOPSIS
-Retrieves all translation engines available in the system.
+    Retrieves all the translation engines from the specified location or strategy.
 
 .DESCRIPTION
-The `Get-AllTranslationEngines` function fetches a list of all translation engines from the API, 
-including their names, descriptions, locations, and definitions. This is useful for identifying 
-available translation engines for project configurations.
+    The `Get-AllTranslationEngines` function retrieves a list of all translation engines available in the specified location or based on the provided strategy.
+    You can optionally provide the location ID or name, and define a strategy to retrieve translation engines from specific locations such as subfolders, parent folders, or a combination of both.
+    Additionally, you can sort the results based on a specified property.
 
 .PARAMETER accessKey
-The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+    (Mandatory) The access key required for authentication and authorization to query the translation engines.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve translation engines. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve translation engines. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching translation engines in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves translation engines from the specified location.
+        - "bloodline": Retrieves translation engines from the specified location and its parent folders.
+        - "lineage": Retrieves translation engines from the specified location and its subfolders.
+        - "genealogy": Retrieves translation engines from both subfolders and parent folders of the specified location.
+
+.PARAMETER sortProperty
+    (Optional) The property by which to sort the list of translation engines. If not specified, the results will not be sorted.
+
+.OUTPUTS
+    Returns a list of translation engines containing fields such as ID, name, description, and associated locations.
 
 .EXAMPLE
-$translationEngines = Get-AllTranslationEngines -accessKey $accessKey
-This example retrieves all translation engines and stores them in the `$translationEngines` variable.
+    # Example 1: Retrieve all translation engines from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllTranslationEngines -accessKey $accessKey
 
-.NOTES
-This function makes a GET request to the translation engines API endpoint and returns a collection of translation engine objects.
+.EXAMPLE
+    # Example 2: Retrieve translation engines from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllTranslationEngines -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve translation engines from a specific location using the lineage strategy and sort by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllTranslationEngines -accessKey $accessKey -locationName "FolderA" -locationStrategy "lineage" -sortProperty "name"
 #>
 function Get-AllTranslationEngines 
 {
@@ -717,6 +845,39 @@ function Get-AllTranslationEngines
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific translation engine by ID or name.
+
+.DESCRIPTION
+    The `Get-TranslationEngine` function retrieves the details of a specific translation engine based on the provided translation engine ID or name.
+    Either the `translationEngineId` or `translationEngineName` must be provided to retrieve the translation engine information.
+    If both parameters are provided, the function will prioritize `translationEngineId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the translation engine.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER translationEngineId
+    (Optional) The ID of the translation engine to retrieve. Either `translationEngineId` or `translationEngineName` must be provided.
+
+.PARAMETER translationEngineName
+    (Optional) The name of the translation engine to retrieve. Either `translationEngineId` or `translationEngineName` must be provided.
+
+.OUTPUTS
+    Returns the specified translation engine with fields such as ID, name, description, supported languages, and configurations.
+
+.EXAMPLE
+    # Example 1: Retrieve a translation engine by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-TranslationEngine -accessKey $accessKey -translationEngineId "67890"
+
+.EXAMPLE
+    # Example 2: Retrieve a translation engine by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-TranslationEngine -accessKey $accessKey -translationEngineName "MyTranslationEngine"
+#>
 function Get-TranslationEngine 
 {
     param (
@@ -734,21 +895,52 @@ function Get-TranslationEngine
 
 <#
 .SYNOPSIS
-Retrieves all customers available in the system.
+    Retrieves all the customers from the specified location or strategy.
 
 .DESCRIPTION
-The `Get-AllCustomers` function fetches a list of all customers from the API, including their IDs, names, and locations. 
-This is useful for identifying customers associated with projects.
+    The `Get-AllCustomers` function retrieves a list of all customers available in the specified location or based on the provided strategy.
+    You can optionally provide the location ID or name, and define a strategy to retrieve customers from specific locations such as subfolders, parent folders, or a combination of both.
+    Additionally, you can sort the results based on a specified property.
 
 .PARAMETER accessKey
-The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+    (Mandatory) The access key required for authentication and authorization to query the customers.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve customers. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve customers. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching customers in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves customers from the specified location.
+        - "bloodline": Retrieves customers from the specified location and its parent folders.
+        - "lineage": Retrieves customers from the specified location and its subfolders.
+        - "genealogy": Retrieves customers from both subfolders and parent folders of the specified location.
+
+.PARAMETER sortProperty
+    (Optional) The property by which to sort the list of customers. If not specified, the results will not be sorted.
+
+.OUTPUTS
+    Returns a list of customers containing fields such as ID, name, description, and associated locations.
 
 .EXAMPLE
-$customers = Get-AllCustomers -accessKey $accessKey
-This example retrieves all customers and stores them in the `$customers` variable.
+    # Example 1: Retrieve all customers from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllCustomers -accessKey $accessKey
 
-.NOTES
-This function makes a GET request to the customers API endpoint and returns a collection of customer objects.
+.EXAMPLE
+    # Example 2: Retrieve customers from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllCustomers -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve customers from a specific location using the bloodline strategy and sort by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllCustomers -accessKey $accessKey -locationName "FolderA" -locationStrategy "bloodline" -sortProperty "name"
 #>
 function Get-AllCustomers 
 {
@@ -776,6 +968,39 @@ function Get-AllCustomers
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific customer by ID or name.
+
+.DESCRIPTION
+    The `Get-Customer` function retrieves the details of a specific customer based on the provided customer ID or name.
+    Either the `customerId` or `customerName` must be provided to retrieve the customer information.
+    If both parameters are provided, the function will prioritize `customerId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the customer.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER customerId
+    (Optional) The ID of the customer to retrieve. Either `customerId` or `customerName` must be provided.
+
+.PARAMETER customerName
+    (Optional) The name of the customer to retrieve. Either `customerId` or `customerName` must be provided.
+
+.OUTPUTS
+    Returns the specified customer with fields such as ID, name, contact details, and associated projects.
+
+.EXAMPLE
+    # Example 1: Retrieve a customer by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Customer -accessKey $accessKey -customerId "67890"
+
+.EXAMPLE
+    # Example 2: Retrieve a customer by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Customer -accessKey $accessKey -customerName "Acme Corp"
+#>
 function Get-Customer 
 {
     param (
@@ -789,6 +1014,41 @@ function Get-Customer
     return Get-Item -accessKey $accessKey -uri "$baseUri/customers" -uriQuery "?fields=id,name,location" -id $customerId -name $customerName -propertyName "Customer";
 }
 
+<#
+.SYNOPSIS
+    Removes a specified customer from the system.
+
+.DESCRIPTION
+    The `Remove-Customer` function deletes a customer identified by either their ID or name. 
+    The function first retrieves the customer using the provided credentials, then constructs the URI 
+    for the deletion request and invokes the delete method. If the customer is successfully removed, 
+    a confirmation message is displayed.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to delete the customer.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER customerId
+    (Optional) The ID of the customer to be removed. Either `customerId` or `customerName` must be provided.
+
+.PARAMETER customerName
+    (Optional) The name of the customer to be removed. Either `customerId` or `customerName` must be provided.
+
+.OUTPUTS
+    If the customer is successfully removed, a confirmation message will be printed to the console. 
+    No output will be returned from the function itself.
+
+.EXAMPLE
+    # Example 1: Remove a customer by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-Customer -accessKey $accessKey -customerId "12345"
+
+.EXAMPLE
+    # Example 2: Remove a customer by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-Customer -accessKey $accessKey -customerName "SampleCustomer"
+#>
 function Remove-Customer
 {
     param (
@@ -966,22 +1226,51 @@ function Update-Customer
 
 <#
 .SYNOPSIS
-Retrieves all file type configurations available in the system.
+    Retrieves all the file type configurations from the specified location or strategy.
 
 .DESCRIPTION
-The `Get-AllFileTypeConfigurations` function fetches a list of all file processing configurations 
-from the API, including their IDs, names, and locations. This is useful for identifying 
-available configurations for file processing.
+    The `Get-AllFileTypeConfigurations` function retrieves a list of all file type configurations available in the specified location or based on the provided strategy.
+    You can optionally provide the location ID or name, and define a strategy to retrieve file type configurations from specific locations such as subfolders, parent folders, or a combination of both.
 
 .PARAMETER accessKey
-The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+    (Mandatory) The access key required for authentication and authorization to query the file type configurations.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve file type configurations. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve file type configurations. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching file type configurations in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves file type configurations from the specified location.
+        - "bloodline": Retrieves file type configurations from the specified location and its parent folders.
+        - "lineage": Retrieves file type configurations from the specified location and its subfolders.
+        - "genealogy": Retrieves file type configurations from both subfolders and parent folders of the specified location.
+
+.PARAMETER sortProperty
+    (Optional) The property by which to sort the results. If specified, the list will be sorted based on this property.
+
+.OUTPUTS
+    Returns a list of file type configurations containing fields such as ID, name, description, and associated locations.
 
 .EXAMPLE
-$fileTypeConfigs = Get-AllFileTypeConfigurations -accessKey $accessKey
-This example retrieves all file type configurations and stores them in the `$fileTypeConfigs` variable.
+    # Example 1: Retrieve all file type configurations from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllFileTypeConfigurations -accessKey $accessKey
 
-.NOTES
-This function makes a GET request to the file type configurations API endpoint and returns a collection of file type configuration objects.
+.EXAMPLE
+    # Example 2: Retrieve file type configurations from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllFileTypeConfigurations -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve file type configurations from a specific location using the lineage strategy
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllFileTypeConfigurations -accessKey $accessKey -locationName "FolderA" -locationStrategy "lineage"
 #>
 function Get-AllFileTypeConfigurations
 {
@@ -1008,6 +1297,39 @@ function Get-AllFileTypeConfigurations
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific file type configuration by ID or name.
+
+.DESCRIPTION
+    The `Get-FileTypeConfiguration` function retrieves the details of a specific file type configuration based on the provided file type ID or name.
+    Either the `fileTypeId` or `fileTypeName` must be provided to retrieve the file type configuration information.
+    If both parameters are provided, the function will prioritize `fileTypeId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the file type configuration.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER fileTypeId
+    (Optional) The ID of the file type configuration to retrieve. Either `fileTypeId` or `fileTypeName` must be provided.
+
+.PARAMETER fileTypeName
+    (Optional) The name of the file type configuration to retrieve. Either `fileTypeId` or `fileTypeName` must be provided.
+
+.OUTPUTS
+    Returns the specified file type configuration with fields such as ID, name, description, and settings.
+
+.EXAMPLE
+    # Example 1: Retrieve a file type configuration by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-FileTypeConfiguration -accessKey $accessKey -fileTypeId "45678"
+
+.EXAMPLE
+    # Example 2: Retrieve a file type configuration by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-FileTypeConfiguration -accessKey $accessKey -fileTypeName "PDF Document"
+#>
 function Get-FileTypeConfiguration 
 {
     param (
@@ -1025,21 +1347,52 @@ function Get-FileTypeConfiguration
 
 <#
 .SYNOPSIS
-Retrieves all workflows available in the system.
+    Retrieves all the workflows from the specified location or strategy.
 
 .DESCRIPTION
-The `Get-AllWorkflows` function fetches a list of all workflows from the API, including their IDs, names, descriptions, 
-locations, workflow templates, and language directions. This is useful for identifying workflows that can be applied to projects.
+    The `Get-AllWorkflows` function retrieves a list of all workflows available in the specified location or based on the provided strategy.
+    You can optionally provide the location ID or name, and define a strategy to retrieve workflows from specific locations such as subfolders, parent folders, or a combination of both.
+    Additionally, you can sort the results based on a specified property.
 
 .PARAMETER accessKey
-The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+    (Mandatory) The access key required for authentication and authorization to query the workflows.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve workflows. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve workflows. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching workflows in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves workflows from the specified location.
+        - "bloodline": Retrieves workflows from the specified location and its parent folders.
+        - "lineage": Retrieves workflows from the specified location and its subfolders.
+        - "genealogy": Retrieves workflows from both subfolders and parent folders of the specified location.
+
+.PARAMETER sortProperty
+    (Optional) The property by which to sort the list of workflows. If not specified, the results will not be sorted.
+
+.OUTPUTS
+    Returns a list of workflows containing fields such as ID, name, description, and associated locations.
 
 .EXAMPLE
-$workflows = Get-AllWorkflows -accessKey $accessKey
-This example retrieves all workflows and stores them in the `$workflows` variable.
+    # Example 1: Retrieve all workflows from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllWorkflows -accessKey $accessKey
 
-.NOTES
-This function makes a GET request to the workflows API endpoint and returns a collection of workflow objects.
+.EXAMPLE
+    # Example 2: Retrieve workflows from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllWorkflows -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve workflows from a specific location using the lineage strategy and sort by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllWorkflows -accessKey $accessKey -locationName "FolderA" -locationStrategy "lineage" -sortProperty "name"
 #>
 function Get-AllWorkflows 
 {
@@ -1066,6 +1419,39 @@ function Get-AllWorkflows
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific workflow by ID or name.
+
+.DESCRIPTION
+    The `Get-Workflow` function retrieves the details of a specific workflow based on the provided workflow ID or name.
+    Either the `workflowId` or `workflowName` must be provided to retrieve the workflow information.
+    If both parameters are provided, the function will prioritize `workflowId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the workflow.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER workflowId
+    (Optional) The ID of the workflow to retrieve. Either `workflowId` or `workflowName` must be provided.
+
+.PARAMETER workflowName
+    (Optional) The name of the workflow to retrieve. Either `workflowId` or `workflowName` must be provided.
+
+.OUTPUTS
+    Returns the specified workflow with fields such as ID, name, description, and associated tasks.
+
+.EXAMPLE
+    # Example 1: Retrieve a workflow by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Workflow -accessKey $accessKey -workflowId "12345"
+
+.EXAMPLE
+    # Example 2: Retrieve a workflow by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Workflow -accessKey $accessKey -workflowName "Translation Workflow"
+#>
 function Get-Workflow 
 {
     param (
@@ -1083,21 +1469,48 @@ function Get-Workflow
 
 <#
 .SYNOPSIS
-Retrieves all pricing models available in the system.
+    Retrieves all the pricing models from the specified location or strategy.
 
 .DESCRIPTION
-The `Get-AllPricingModels` function fetches a list of all pricing models from the API, including their IDs, names, 
-descriptions, currency codes, and locations. This is useful for understanding the pricing options available for projects.
+    The `Get-AllPricingModels` function retrieves a list of all pricing models available in the specified location or based on the provided strategy.
+    You can optionally provide the location ID or name, and define a strategy to retrieve pricing models from specific locations such as subfolders, parent folders, or a combination of both.
 
 .PARAMETER accessKey
-The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+    (Mandatory) The access key required for authentication and authorization to query the pricing models.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve pricing models. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve pricing models. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching pricing models in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves pricing models from the specified location.
+        - "bloodline": Retrieves pricing models from the specified location and its parent folders.
+        - "lineage": Retrieves pricing models from the specified location and its subfolders.
+        - "genealogy": Retrieves pricing models from both subfolders and parent folders of the specified location.
+
+.OUTPUTS
+    Returns a list of pricing models containing fields such as ID, name, description, and associated locations.
 
 .EXAMPLE
-$pricingModels = Get-AllPricingModels -accessKey $accessKey
-This example retrieves all pricing models and stores them in the `$pricingModels` variable.
+    # Example 1: Retrieve all pricing models from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllPricingModels -accessKey $accessKey
 
-.NOTES
-This function makes a GET request to the pricing models API endpoint and returns a collection of pricing model objects.
+.EXAMPLE
+    # Example 2: Retrieve pricing models from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllPricingModels -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve pricing models from a specific location using the bloodline strategy
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllPricingModels -accessKey $accessKey -locationName "FolderA" -locationStrategy "bloodline"
 #>
 function Get-AllPricingModels 
 {
@@ -1123,8 +1536,40 @@ function Get-AllPricingModels
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
-# Might need to remove this one..
-function  Get-PricingModel {
+<#
+.SYNOPSIS
+    Retrieves a specific pricing model by ID or name.
+
+.DESCRIPTION
+    The `Get-PricingModel` function retrieves the details of a specific pricing model based on the provided pricing model ID or name.
+    Either the `pricingModelId` or `pricingModelName` must be provided to retrieve the pricing model information.
+    If both parameters are provided, the function will prioritize `pricingModelId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the pricing model.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER pricingModelId
+    (Optional) The ID of the pricing model to retrieve. Either `pricingModelId` or `pricingModelName` must be provided.
+
+.PARAMETER pricingModelName
+    (Optional) The name of the pricing model to retrieve. Either `pricingModelId` or `pricingModelName` must be provided.
+
+.OUTPUTS
+    Returns the specified pricing model with fields such as ID, name, and pricing details.
+
+.EXAMPLE
+    # Example 1: Retrieve a pricing model by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-PricingModel -accessKey $accessKey -pricingModelId "54321"
+
+.EXAMPLE
+    # Example 2: Retrieve a pricing model by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-PricingModel -accessKey $accessKey -pricingModelName "Standard Pricing"
+#>
+function Get-PricingModel {
     param (
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
@@ -1140,21 +1585,48 @@ function  Get-PricingModel {
 
 <#
 .SYNOPSIS
-Retrieves all schedule templates available in the system.
+    Retrieves all the schedule templates from the specified location or strategy.
 
 .DESCRIPTION
-The `Get-AllScheduleTemplates` function fetches a list of all schedule templates from the API, including their names, 
-descriptions, and locations. This is useful for identifying templates that can be used to set project schedules.
+    The `Get-AllScheduleTemplates` function retrieves a list of all schedule templates available in the specified location or based on the provided strategy.
+    You can optionally provide the location ID or name, and define a strategy to retrieve schedule templates from specific locations such as subfolders, parent folders, or a combination of both.
 
 .PARAMETER accessKey
-The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+    (Mandatory) The access key required for authentication and authorization to query the schedule templates.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve schedule templates. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve schedule templates. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching schedule templates in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves schedule templates from the specified location.
+        - "bloodline": Retrieves schedule templates from the specified location and its parent folders.
+        - "lineage": Retrieves schedule templates from the specified location and its subfolders.
+        - "genealogy": Retrieves schedule templates from both subfolders and parent folders of the specified location.
+
+.OUTPUTS
+    Returns a list of schedule templates containing fields such as ID, name, description, and associated locations.
 
 .EXAMPLE
-$scheduleTemplates = Get-AllScheduleTemplates -accessKey $accessKey
-This example retrieves all schedule templates and stores them in the `$scheduleTemplates` variable.
+    # Example 1: Retrieve all schedule templates from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllScheduleTemplates -accessKey $accessKey
 
-.NOTES
-This function makes a GET request to the schedule templates API endpoint and returns a collection of schedule template objects.
+.EXAMPLE
+    # Example 2: Retrieve schedule templates from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllScheduleTemplates -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve schedule templates from a specific location using the lineage strategy
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllScheduleTemplates -accessKey $accessKey -locationName "FolderA" -locationStrategy "lineage"
 #>
 function Get-AllScheduleTemplates 
 {
@@ -1180,6 +1652,39 @@ function Get-AllScheduleTemplates
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific schedule template by ID or name.
+
+.DESCRIPTION
+    The `Get-ScheduleTemplate` function retrieves the details of a specific schedule template based on the provided schedule template ID or name.
+    Either the `scheduleTemplateId` or `scheduleTemplateName` must be provided to retrieve the schedule template information.
+    If both parameters are provided, the function will prioritize `scheduleTemplateId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the schedule template.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER scheduleTemplateId
+    (Optional) The ID of the schedule template to retrieve. Either `scheduleTemplateId` or `scheduleTemplateName` must be provided.
+
+.PARAMETER scheduleTemplateName
+    (Optional) The name of the schedule template to retrieve. Either `scheduleTemplateId` or `scheduleTemplateName` must be provided.
+
+.OUTPUTS
+    Returns the specified schedule template with fields such as ID, name, description, and scheduling details.
+
+.EXAMPLE
+    # Example 1: Retrieve a schedule template by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-ScheduleTemplate -accessKey $accessKey -scheduleTemplateId "98765"
+
+.EXAMPLE
+    # Example 2: Retrieve a schedule template by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-ScheduleTemplate -accessKey $accessKey -scheduleTemplateName "Weekly Schedule"
+#>
 function Get-ScheduleTemplate 
 {
     param (
@@ -1195,46 +1700,85 @@ function Get-ScheduleTemplate
         -propertyName "Schedule template"
 }
 
+<#
+.SYNOPSIS
+    Removes a specified schedule template from the system.
+
+.DESCRIPTION
+    The `Remove-ScheduleTemplate` function deletes a schedule template identified by either its ID or name. 
+    The function first retrieves the schedule template using the provided credentials, then constructs the URI 
+    for the deletion request and invokes the delete method. If the schedule template is successfully removed, 
+    a confirmation message is displayed.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to delete the schedule template.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER scheduleTemplateId
+    (Optional) The ID of the schedule template to be removed. Either `scheduleTemplateId` or `scheduleTemplateName` must be provided.
+
+.PARAMETER scheduleTemplateName
+    (Optional) The name of the schedule template to be removed. Either `scheduleTemplateId` or `scheduleTemplateName` must be provided.
+
+.OUTPUTS
+    If the schedule template is successfully removed, a confirmation message will be printed to the console. 
+    No output will be returned from the function itself.
+
+.EXAMPLE
+    # Example 1: Remove a schedule template by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-ScheduleTemplate -accessKey $accessKey -scheduleTemplateId "12345"
+
+.EXAMPLE
+    # Example 2: Remove a schedule template by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-ScheduleTemplate -accessKey $accessKey -scheduleTemplateName "SampleScheduleTemplate"
+#>
 function Remove-ScheduleTemplate
 {
     param (
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
 
-        [Parameter(Mandatory=$true)]
-        [string] $scheduleTemplateIdOrName
+        [string] $scheduleTemplateId,
+        [string] $scheduleTemplateName
     )
 
-    $scheduleTemplates = Get-AllScheduleTemplates $accessKey;
-    $scheduleTemplate = $scheduleTemplates | Where-Object {$_.Id -eq $scheduleTemplateIdOrName -or $_.Name -eq $scheduleTemplateIdOrName } | Select-Object -First 1;
+    $uri = "$baseUri/schedule-templates"
+    $headers = Get-RequestHeader -accessKey $accessKey;
+    $scheduleTemplate = Get-ScheduleTemplate -accessKey $accessKey -scheduleTemplateId $scheduleTemplateId -scheduleTemplateName $scheduleTemplateName
 
     if ($scheduleTemplate)
     {
-        $headers = Get-RequestHeader -accessKey $accessKey;
-        $uri = "$baseUri/schedule-templates/$($scheduleTemplate.Id)"
-        return Invoke-RestMethod -uri $uri -Method Delete -Headers $headers;
+        $uri += "/$($scheduleTemplate.Id)";
+        Invoke-SafeMethod -method {
+            $null = Invoke-RestMethod -Headers $headers -Method Delete -Uri $uri;
+            Write-Host "Schedule template removed" -ForegroundColor Green;
+        }
     }
-
-    Write-Host "Schedule Template $scheduleTemplateIdOrName does not exist" -ForegroundColor Green;
 }
 
 <#
 .SYNOPSIS
-Retrieves all locations available in the system.
+    Retrieves all locations available in the system.
 
 .DESCRIPTION
-The `Get-AllLocations` function fetches a list of all locations from the API. This is useful for understanding 
-where resources and projects can be located.
+    The `Get-AllLocations` function retrieves a list of all locations (folders) from the system. 
+    This function does not require any additional parameters other than the access key for authentication.
 
 .PARAMETER accessKey
-The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+    (Mandatory) The access key required for authentication and authorization to query the locations.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.OUTPUTS
+    Returns a list of locations containing fields such as ID, name, description, and other related metadata.
 
 .EXAMPLE
-$locations = Get-AllLocations -accessKey $accessKey
-This example retrieves all locations and stores them in the `$locations` variable.
-
-.NOTES
-This function makes a GET request to the locations API endpoint and returns a collection of location objects.
+    # Example: Retrieve all locations
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllLocations -accessKey $accessKey
 #>
 function Get-AllLocations 
 {
@@ -1245,6 +1789,39 @@ function Get-AllLocations
     return Get-AllItems $accessKey "$baseUri/folders"
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific location by ID or name.
+
+.DESCRIPTION
+    The `Get-Location` function retrieves the details of a specific location based on the provided location ID or name.
+    Either the `locationId` or `locationName` must be provided to retrieve the location information.
+    If both parameters are provided, the function will prioritize `locationId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the location.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the location to retrieve. Either `locationId` or `locationName` must be provided.
+
+.PARAMETER locationName
+    (Optional) The name of the location to retrieve. Either `locationId` or `locationName` must be provided.
+
+.OUTPUTS
+    Returns the specified location with fields such as ID, name, description, and parent folder.
+
+.EXAMPLE
+    # Example 1: Retrieve a location by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Location -accessKey $accessKey -locationId "78910"
+
+.EXAMPLE
+    # Example 2: Retrieve a location by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Location -accessKey $accessKey -locationName "Main Folder"
+#>
 function Get-Location 
 {
     param (
@@ -1258,6 +1835,55 @@ function Get-Location
     return Get-Item -accessKey $accessKey -id $locationId -name $locationName -uri "$baseUri/folders" -propertyName "Folder";
 }
 
+<#
+.SYNOPSIS
+    Retrieves all custom fields available in the system.
+
+.DESCRIPTION
+    The `Get-AllCustomFields` function retrieves a list of all custom fields from the system. 
+    You can optionally filter the results based on the location ID or name and define a strategy for fetching custom fields from specific locations. 
+    Additionally, the results can be sorted based on the specified sort property.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the custom fields.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve custom fields. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve custom fields. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching custom fields in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves custom fields from the specified location.
+        - "bloodline": Retrieves custom fields from the specified location and its parent folders.
+        - "lineage": Retrieves custom fields from the specified location and its subfolders.
+        - "genealogy": Retrieves custom fields from both subfolders and parent folders of the specified location.
+
+.PARAMETER sortProperty
+    (Optional) The property by which to sort the retrieved custom fields. If a value is provided with a `-` prefix, the sort will be in descending order; otherwise, the sort will be in ascending order.
+
+.OUTPUTS
+    Returns a list of custom fields containing relevant details such as ID, name, description, and other related metadata.
+
+.EXAMPLE
+    # Example 1: Retrieve all custom fields from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllCustomFields -accessKey $accessKey
+
+.EXAMPLE
+    # Example 2: Retrieve custom fields from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllCustomFields -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve custom fields from a specific location and sort them by name in descending order
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllCustomFields -accessKey $accessKey -locationName "FolderA" -sortProperty "-name"
+#>
 function Get-AllCustomFields
 {
     param (
@@ -1283,6 +1909,39 @@ function Get-AllCustomFields
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific custom field by ID or name.
+
+.DESCRIPTION
+    The `Get-CustomField` function retrieves the details of a specific custom field based on the provided custom field ID or name.
+    Either the `customFieldId` or `customFieldName` must be provided to retrieve the custom field information.
+    If both parameters are provided, the function will prioritize `customFieldId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the custom field.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER customFieldId
+    (Optional) The ID of the custom field to retrieve. Either `customFieldId` or `customFieldName` must be provided.
+
+.PARAMETER customFieldName
+    (Optional) The name of the custom field to retrieve. Either `customFieldId` or `customFieldName` must be provided.
+
+.OUTPUTS
+    Returns the specified custom field with fields such as ID, name, type, and options.
+
+.EXAMPLE
+    # Example 1: Retrieve a custom field by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-CustomField -accessKey $accessKey -customFieldId "12345"
+
+.EXAMPLE
+    # Example 2: Retrieve a custom field by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-CustomField -accessKey $accessKey -customFieldName "Project Type"
+#>
 function Get-CustomField 
 {
     param (
@@ -1299,6 +1958,51 @@ function Get-CustomField
          -id $customFieldId -name $customFieldName;
 }
 
+<#
+.SYNOPSIS
+    Retrieves all translation memories available in the system.
+
+.DESCRIPTION
+    The `Get-AllTranslationMemories` function retrieves a list of all translation memories. 
+    You can optionally filter the results based on the location ID or name and define a strategy for fetching translation memories from specific locations. 
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the translation memories.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve translation memories. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve translation memories. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching translation memories in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves translation memories from the specified location.
+        - "bloodline": Retrieves translation memories from the specified location and its parent folders.
+        - "lineage": Retrieves translation memories from the specified location and its subfolders.
+        - "genealogy": Retrieves translation memories from both subfolders and parent folders of the specified location.
+
+.OUTPUTS
+    Returns a list of translation memories containing relevant details such as ID, name, description, and other related metadata.
+
+.EXAMPLE
+    # Example 1: Retrieve all translation memories from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllTranslationMemories -accessKey $accessKey
+
+.EXAMPLE
+    # Example 2: Retrieve translation memories from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllTranslationMemories -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve translation memories from a specific location using the bloodline strategy
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllTranslationMemories -accessKey $accessKey -locationName "FolderA" -locationStrategy "bloodline"
+#>
 function Get-AllTranslationMemories 
 {
     param (
@@ -1323,6 +2027,39 @@ function Get-AllTranslationMemories
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific translation memory by ID or name.
+
+.DESCRIPTION
+    The `Get-TranslationMemory` function retrieves the details of a specific translation memory based on the provided translation memory ID or name.
+    Either the `translationMemoryId` or `translationMemoryName` must be provided to retrieve the translation memory information.
+    If both parameters are provided, the function will prioritize `translationMemoryId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the translation memory.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER translationMemoryId
+    (Optional) The ID of the translation memory to retrieve. Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.PARAMETER translationMemoryName
+    (Optional) The name of the translation memory to retrieve. Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.OUTPUTS
+    Returns the specified translation memory with fields such as ID, name, description, and language pair.
+
+.EXAMPLE
+    # Example 1: Retrieve a translation memory by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-TranslationMemory -accessKey $accessKey -translationMemoryId "78901"
+
+.EXAMPLE
+    # Example 2: Retrieve a translation memory by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-TranslationMemory -accessKey $accessKey -translationMemoryName "MyTranslationMemory"
+#>
 function Get-TranslationMemory 
 {
     param (
@@ -1427,6 +2164,41 @@ function New-TranslationMemory
     return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Post -Body $json }
 }
 
+<#
+.SYNOPSIS
+    Removes a specified translation memory from the system.
+
+.DESCRIPTION
+    The `Remove-TranslationMemory` function deletes a translation memory identified by either its ID or name. 
+    The function first retrieves the translation memory using the provided credentials, then constructs the URI 
+    for the deletion request and invokes the delete method. If the translation memory is successfully removed, 
+    a confirmation message is displayed.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to delete the translation memory.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER translationMemoryId
+    (Optional) The ID of the translation memory to be removed. Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.PARAMETER translationMemoryName
+    (Optional) The name of the translation memory to be removed. Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.OUTPUTS
+    If the translation memory is successfully removed, a confirmation message will be printed to the console. 
+    No output will be returned from the function itself.
+
+.EXAMPLE
+    # Example 1: Remove a translation memory by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-TranslationMemory -accessKey $accessKey -translationMemoryId "12345"
+
+.EXAMPLE
+    # Example 2: Remove a translation memory by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-TranslationMemory -accessKey $accessKey -translationMemoryName "SampleTranslationMemory"
+#>
 function Remove-TranslationMemory
 {
     param (
@@ -1547,6 +2319,41 @@ function Update-TranslationMemory
     return Invoke-SafeMethod {Invoke-RestMethod -Uri $uri -Headers $headers -Method Put -body $json }
 }
 
+<#
+.SYNOPSIS
+    Copies an existing translation memory to create a new one.
+
+.DESCRIPTION
+    The `Copy-TranslationMemory` function duplicates a specified translation memory identified by either its ID or name. 
+    The new translation memory is created in the same location as the original, with the same name appended with " (copy)". 
+    The function first retrieves the existing translation memory using the provided credentials, constructs the URI for 
+    the copy request, and invokes the method to create the new translation memory.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to copy the translation memory.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER translationMemoryId
+    (Optional) The ID of the translation memory to be copied. Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.PARAMETER translationMemoryName
+    (Optional) The name of the translation memory to be copied. Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.OUTPUTS
+    If the translation memory is successfully copied, a confirmation message will be printed to the console. 
+    No output will be returned from the function itself.
+
+.EXAMPLE
+    # Example 1: Copy a translation memory by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Copy-TranslationMemory -accessKey $accessKey -translationMemoryId "12345"
+
+.EXAMPLE
+    # Example 2: Copy a translation memory by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Copy-TranslationMemory -accessKey $accessKey -translationMemoryName "SampleTranslationMemory"
+#>
 function Copy-TranslationMemory 
 {
     param (
@@ -1731,6 +2538,55 @@ function Export-TranslationMemory
     $null = Invoke-RestMethod -Uri $downloadUri -Headers $headers -OutFile $outputFilePath;
 }
 
+<#
+.SYNOPSIS
+    Retrieves all translation quality assessments available in the system.
+
+.DESCRIPTION
+    The `Get-AllTranslationQualityAssessments` function retrieves a list of all translation quality assessments. 
+    You can optionally filter the results based on the location ID or name, define a strategy for fetching quality assessments from specific locations, 
+    and sort the results based on a specified property.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the translation quality assessments.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve translation quality assessments. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve translation quality assessments. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching translation quality assessments in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves translation quality assessments from the specified location.
+        - "bloodline": Retrieves translation quality assessments from the specified location and its parent folders.
+        - "lineage": Retrieves translation quality assessments from the specified location and its subfolders.
+        - "genealogy": Retrieves translation quality assessments from both subfolders and parent folders of the specified location.
+
+.PARAMETER sortProperty
+    (Optional) The property to sort the results. If a value is provided with a `-` ahead, it indicates descending order; otherwise, the order is ascending.
+
+.OUTPUTS
+    Returns a list of translation quality assessments containing relevant details such as ID, name, description, and other related metadata.
+
+.EXAMPLE
+    # Example 1: Retrieve all translation quality assessments from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllTranslationQualityAssessments -accessKey $accessKey
+
+.EXAMPLE
+    # Example 2: Retrieve translation quality assessments from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllTranslationQualityAssessments -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve translation quality assessments from a specific location using the bloodline strategy and sort by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllTranslationQualityAssessments -accessKey $accessKey -locationName "FolderA" -locationStrategy "bloodline" -sortProperty "name"
+#>
 function Get-AllTranslationQualityAssessments 
 {
     param (
@@ -1756,6 +2612,39 @@ function Get-AllTranslationQualityAssessments
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific translation quality assessment by ID or name.
+
+.DESCRIPTION
+    The `Get-TranslationQualityAssessment` function retrieves the details of a specific translation quality assessment based on the provided TQA ID or name.
+    Either the `tqaId` or `tqaName` must be provided to retrieve the translation quality assessment information.
+    If both parameters are provided, the function will prioritize `tqaId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the translation quality assessment.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER tqaId
+    (Optional) The ID of the translation quality assessment to retrieve. Either `tqaId` or `tqaName` must be provided.
+
+.PARAMETER tqaName
+    (Optional) The name of the translation quality assessment to retrieve. Either `tqaId` or `tqaName` must be provided.
+
+.OUTPUTS
+    Returns the specified translation quality assessment with fields such as ID, name, description, and assessment criteria.
+
+.EXAMPLE
+    # Example 1: Retrieve a translation quality assessment by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-TranslationQualityAssessment -accessKey $accessKey -tqaId "12345"
+
+.EXAMPLE
+    # Example 2: Retrieve a translation quality assessment by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-TranslationQualityAssessment -accessKey $accessKey -tqaName "MyTranslationQualityAssessment"
+#>
 function Get-TranslationQualityAssessment 
 {
     param (
@@ -1769,6 +2658,51 @@ function Get-TranslationQualityAssessment
     return Get-Item -accessKey $accessKey -uri "$baseUri/tqa-profiles" -id $tqaId -name $tqaName -propertyName "Tqa profile";
 }
 
+<#
+.SYNOPSIS
+    Retrieves all language processing rules available in the system.
+
+.DESCRIPTION
+    The `Get-AllLanguageProcessingRules` function retrieves a list of all language processing rules. 
+    You can optionally filter the results based on the location ID or name, and define a strategy for fetching processing rules from specific locations.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the language processing rules.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve language processing rules. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve language processing rules. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching language processing rules in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves language processing rules from the specified location.
+        - "bloodline": Retrieves language processing rules from the specified location and its parent folders.
+        - "lineage": Retrieves language processing rules from the specified location and its subfolders.
+        - "genealogy": Retrieves language processing rules from both subfolders and parent folders of the specified location.
+
+.OUTPUTS
+    Returns a list of language processing rules containing relevant details such as ID, name, description, and other related metadata.
+
+.EXAMPLE
+    # Example 1: Retrieve all language processing rules from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllLanguageProcessingRules -accessKey $accessKey
+
+.EXAMPLE
+    # Example 2: Retrieve language processing rules from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllLanguageProcessingRules -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve language processing rules from a specific location using the genealogy strategy
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllLanguageProcessingRules -accessKey $accessKey -locationName "FolderA" -locationStrategy "genealogy"
+#>
 function Get-AllLanguageProcessingRules 
 {
     param (
@@ -1798,6 +2732,39 @@ function Get-AllLanguageProcessingRules
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific language processing rule by ID or name.
+
+.DESCRIPTION
+    The `Get-LanguageProcessingRule` function retrieves the details of a specific language processing rule based on the provided ID or name.
+    Either the `languageProcessingId` or `languageProcessingName` must be provided to retrieve the language processing rule information.
+    If both parameters are provided, the function will prioritize `languageProcessingId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the language processing rule.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER languageProcessingId
+    (Optional) The ID of the language processing rule to retrieve. Either `languageProcessingId` or `languageProcessingName` must be provided.
+
+.PARAMETER languageProcessingName
+    (Optional) The name of the language processing rule to retrieve. Either `languageProcessingId` or `languageProcessingName` must be provided.
+
+.OUTPUTS
+    Returns the specified language processing rule with fields such as ID, name, description, and associated processing criteria.
+
+.EXAMPLE
+    # Example 1: Retrieve a language processing rule by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-LanguageProcessingRule -accessKey $accessKey -languageProcessingId "67890"
+
+.EXAMPLE
+    # Example 2: Retrieve a language processing rule by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-LanguageProcessingRule -accessKey $accessKey -languageProcessingName "MyLanguageProcessingRule"
+#>
 function Get-LanguageProcessingRule 
 {
     param (
@@ -1813,6 +2780,60 @@ function Get-LanguageProcessingRule
              -propertyName "Language processing rule"
 }
 
+<#
+.SYNOPSIS
+    Retrieves all field templates available in the system.
+
+.DESCRIPTION
+    The `Get-AllFieldTemplates` function retrieves a list of all field templates. 
+    You can optionally filter the results based on the location ID or name, and define a strategy for fetching field templates from specific locations.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the field templates.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve field templates. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve field templates. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching field templates in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves field templates from the specified location.
+        - "bloodline": Retrieves field templates from the specified location and its parent folders.
+        - "lineage": Retrieves field templates from the specified location and its subfolders.
+        - "genealogy": Retrieves field templates from both subfolders and parent folders of the specified location.
+
+.PARAMETER sortProperty
+    (Optional) The property by which the field templates should be sorted. 
+    If a value is provided with a '-' prefix, the sorting will be in descending order; otherwise, it will be in ascending order.
+
+.OUTPUTS
+    Returns a list of field templates containing relevant details such as ID, name, description, and other related metadata.
+
+.EXAMPLE
+    # Example 1: Retrieve all field templates from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllFieldTemplates -accessKey $accessKey
+
+.EXAMPLE
+    # Example 2: Retrieve field templates from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllFieldTemplates -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve field templates from a specific location using the bloodline strategy
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllFieldTemplates -accessKey $accessKey -locationName "FolderA" -locationStrategy "bloodline"
+
+.EXAMPLE
+    # Example 4: Retrieve and sort field templates by name in descending order
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllFieldTemplates -accessKey $accessKey -sortProperty "-name"
+#>
 function Get-AllFieldTemplates 
 {
     param (
@@ -1843,6 +2864,39 @@ function Get-AllFieldTemplates
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific field template by ID or name.
+
+.DESCRIPTION
+    The `Get-FieldTemplate` function retrieves the details of a specific field template based on the provided ID or name.
+    Either the `fieldTemplateId` or `fieldTemplateName` must be provided to retrieve the field template information.
+    If both parameters are provided, the function will prioritize `fieldTemplateId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the field template.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER fieldTemplateId
+    (Optional) The ID of the field template to retrieve. Either `fieldTemplateId` or `fieldTemplateName` must be provided.
+
+.PARAMETER fieldTemplateName
+    (Optional) The name of the field template to retrieve. Either `fieldTemplateId` or `fieldTemplateName` must be provided.
+
+.OUTPUTS
+    Returns the specified field template with fields such as ID, name, description, and associated configurations.
+
+.EXAMPLE
+    # Example 1: Retrieve a field template by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-FieldTemplate -accessKey $accessKey -fieldTemplateId "67890"
+
+.EXAMPLE
+    # Example 2: Retrieve a field template by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-FieldTemplate -accessKey $accessKey -fieldTemplateName "MyFieldTemplate"
+#>
 function Get-FieldTemplate 
 {
     param (
@@ -1857,6 +2911,29 @@ function Get-FieldTemplate
                 -id $fieldTemplateId -name $fieldTemplateName -propertyName "Field template";
 }
 
+<#
+.SYNOPSIS
+    Creates a language pair linking one source language to multiple target languages.
+
+.DESCRIPTION
+    The `Get-LanguagePair` function constructs a PowerShell object that associates a specified source language 
+    with multiple target languages. This function is particularly useful when creating translation memories 
+    and project templates, allowing for the definition of language relationships in a structured format.
+
+.PARAMETER sourceLanguage
+    (Mandatory) The language code of the source language.
+
+.PARAMETER targetLanguages
+    (Mandatory) An array of language codes representing the target languages to link with the source language.
+
+.OUTPUTS
+    Returns an array of PowerShell objects, each representing a language direction linking the source language
+    with one of the specified target languages. Each object contains structured information about the language pair.
+
+.EXAMPLE
+    # Example 1: Create language pairs linking English to multiple languages
+    $languagePairs = Get-LanguagePair -sourceLanguage "en-US" -targetLanguages @("fr-FR", "de-DE", "es-ES")
+#>
 function Get-LanguagePair {
     param (
         [Parameter(Mandatory=$true)]
