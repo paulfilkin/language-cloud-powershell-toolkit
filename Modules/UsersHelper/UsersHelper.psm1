@@ -7,18 +7,49 @@ Retrieves all users available in the system.
 .DESCRIPTION
 The `Get-AllUsers` function fetches a list of all users from the API, 
 including their IDs, emails, first names, last names, and locations. 
-This is useful for managing user information and understanding the users 
-associated with projects.
 
 .PARAMETER accessKey
-The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+(Mandatory) The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+
+To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+(Optional) The ID of the location to filter the users. If specified, only users associated with this location will be retrieved.
+
+.PARAMETER locationName
+(Optional) The name of the location to filter the users. If specified, only users associated with this location will be retrieved.
+
+.PARAMETER locationStrategy
+(Optional) The strategy to determine how the location is used when filtering users. Default is "location".
+The available options are:
+    - "location" (default): Retrieves termbases from the specified location.
+    - "bloodline": Retrieves termbases from the specified location and its parent folders.
+    - "lineage": Retrieves termbases from the specified location and its subfolders.
+    - "genealogy": Retrieves termbases from both subfolders and parent folders of the specified location.
+
+.PARAMETER sortProperty
+(Optional) The property by which the results should be sorted. Providing a property name (e.g., "name") will sort the list in ascending order. 
+Prefixing a property with a dash (e.g., "-name") will sort it in descending order.
 
 .EXAMPLE
-$users = Get-AllUsers -accessKey $accessKey
-This example retrieves all users and stores them in the `$users` variable.
+    # Example 1: Retrieve all users available in the system
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllUsers -accessKey $accessKey
 
-.NOTES
-This function makes a GET request to the users API endpoint and returns a collection of user objects.
+.EXAMPLE
+    # Example 2: Retrieve users from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllUsers -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve users from a specific location using the location name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllUsers -accessKey $accessKey -locationName "FolderA"
+
+.EXAMPLE
+    # Example 4: Retrieve users sorted by email
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllUsers -accessKey $accessKey -sortProperty "email"
 #>
 function Get-AllUsers 
 {
@@ -33,7 +64,7 @@ function Get-AllUsers
     )
 
     $location = @{};
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    if ($locationId -or $locationName)
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
@@ -43,10 +74,54 @@ function Get-AllUsers
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
     return Get-AllItems -accessKey $accessKey -uri $uri;
-
 }
 
-function  Get-User {
+<#
+.SYNOPSIS
+Retrieves information about a user or a list of users from the system.
+
+.DESCRIPTION
+The `Get-User` function allows you to fetch details of a specific user by providing their user ID, or retrieve users based on their email, first name, or last name. 
+If the user ID is provided, the function returns details for that specific user. 
+Otherwise, it filters the list of users based on the provided criteria.
+
+.PARAMETER accessKey
+(Mandatory) The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER userId
+(Optional) The ID of the user to retrieve. If provided, it will return the user associated with this ID.
+
+.PARAMETER userEmail
+(Optional) The email address of the user to retrieve. If specified, the function will return the user with this email.
+
+.PARAMETER userFirstName
+(Optional) The first name of the user to retrieve. Used in conjunction with `userLastName`.
+
+.PARAMETER userLastName
+(Optional) The last name of the user to retrieve. Used in conjunction with `userFirstName`.
+
+.EXAMPLE
+    # Example 1: Retrieve a user by user ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-User -accessKey $accessKey -userId "12345"
+
+.EXAMPLE
+    # Example 2: Retrieve a user by email
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-User -accessKey $accessKey -userEmail "user@example.com"
+
+.EXAMPLE
+    # Example 3: Retrieve a user by first and last name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-User -accessKey $accessKey -userFirstName "John" -userLastName "Doe"
+
+.EXAMPLE
+    # Example 4: Attempt to retrieve a non-existent user
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-User -accessKey $accessKey -userEmail "nonexistent@example.com"
+#>
+function Get-User {
     param (
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
@@ -98,20 +173,55 @@ Retrieves all groups available in the system.
 .DESCRIPTION
 The `Get-AllGroups` function fetches a list of all groups from the API, 
 including their IDs, names, descriptions, and locations. 
-This is useful for managing group information and understanding the groups 
-associated with projects.
 
 .PARAMETER accessKey
-The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+(Mandatory) The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+
+To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+(Optional) The ID of the location to filter the groups. If specified, only groups associated with this location will be retrieved.
+
+.PARAMETER locationName
+(Optional) The name of the location to filter the groups. If specified, only groups associated with this location will be retrieved.
+
+.PARAMETER locationStrategy
+(Optional) The strategy to determine how the location is used when filtering groups. Default is "bloodline".
+The available options are:
+        - "location" (default): Retrieves termbases from the specified location.
+        - "bloodline": Retrieves termbases from the specified location and its parent folders.
+        - "lineage": Retrieves termbases from the specified location and its subfolders.
+        - "genealogy": Retrieves termbases from both subfolders and parent folders of the specified location.
+
+.PARAMETER sortProperty
+(Optional) The property by which the results should be sorted. Providing a property name (e.g., "name") will sort the list in ascending order. Prefixing a property with a dash (e.g., "-name") will sort it in descending order.
 
 .EXAMPLE
-$groups = Get-AllGroups -accessKey $accessKey
-This example retrieves all groups and stores them in the `$groups` variable.
+    # Example 1: Retrieve all groups available in the system
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllGroups -accessKey $accessKey
 
-.NOTES
-This function makes a GET request to the groups API endpoint and returns a collection of group objects.
+.EXAMPLE
+    # Example 2: Retrieve groups from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllGroups -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve groups from a specific location using the location name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllGroups -accessKey $accessKey -locationName "FolderA"
+
+.EXAMPLE
+    # Example 4: Retrieve groups sorted by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllGroups -accessKey $accessKey -sortProperty "name"
+
+.EXAMPLE
+    # Example 5: Retrieve groups sorted by description in descending order
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllGroups -accessKey $accessKey -sortProperty "-description"
 #>
-function Get-AllGroups # apply filter on groups and users
+function Get-AllGroups
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -124,7 +234,7 @@ function Get-AllGroups # apply filter on groups and users
     )
     
     $location = @{};
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    if ($locationId -or $locationName)
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
@@ -259,6 +369,6 @@ function Invoke-SafeMethod
     }
 }
 
-Export-ModuleMember Get-AllUsers; 
+Export-ModuleMember Get-AllUsers; #
 Export-ModuleMember Get-User;
 Export-ModuleMember Get-AllGroups;
