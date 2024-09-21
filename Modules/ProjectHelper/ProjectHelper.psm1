@@ -105,7 +105,6 @@ function New-Project
         [Parameter(Mandatory=$true)]
         [string] $name,
 
-        
         [PArameter(Mandatory=$true)]
         [string] $dueDate,
         

@@ -31,6 +31,8 @@ function Get-AllProjectTemplates
         [string] $locationStrategy = "location"
     )
 
+    
+    $location = @{};
     if ($locationId -or $locationName)
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName;
@@ -701,7 +703,8 @@ function Get-AllTranslationEngines
         [string] $locationStrategy = "location",
         [string] $sortProperty
     )
-
+    
+    $location = @{};
     if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -724,7 +727,9 @@ function Get-TranslationEngine
         [String] $translationEngineName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/translation-engines" -uriQuery "?fields=name,description,location,definition" -id $translationEngineId -name $translationEngineName;
+    return Get-Item -accessKey $accessKey -uri "$baseUri/translation-engines" `
+         -uriQuery "?fields=name,description,location,definition" -id $translationEngineId `
+         -name $translationEngineName -propertyName "Translation engine"
 }
 
 <#
@@ -757,8 +762,10 @@ function Get-AllCustomers
         [string] $sortProperty
     )
 
-    if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
+    $location = @{};
+    if ($locationId -or $locationName)
     {
+
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
@@ -988,6 +995,7 @@ function Get-AllFileTypeConfigurations
         [string] $sortProperty
     )
 
+    $location = @{}
     if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -1010,7 +1018,9 @@ function Get-FileTypeConfiguration
         [string] $fileTypeName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/file-processing-configurations" -uriQuery "?fields=id,name,location" -id $fileTypeId -name $fileTypeName;
+    return Get-Item -accessKey $accessKey -uri "$baseUri/file-processing-configurations" `
+        -uriQuery "?fields=id,name,location" -id $fileTypeId -name $fileTypeName `
+        -propertyName "File processing configuration"
 }
 
 <#
@@ -1043,6 +1053,7 @@ function Get-AllWorkflows
         [string] $sortProperty
     )
 
+    $location = @{};
     if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -1065,7 +1076,9 @@ function Get-Workflow
         [string] $workflowName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/workflows" -uriQuery "?fields=id,name,description,location,workflowTemplate,languageDirections" -id $workflowId -name $workflowName;
+    return Get-Item -accessKey $accessKey -uri "$baseUri/workflows" `
+         -uriQuery "?fields=id,name,description,location,workflowTemplate,languageDirections" `
+         -id $workflowId -name $workflowName -propertyName "Workflow";
 }
 
 <#
@@ -1097,6 +1110,7 @@ function Get-AllPricingModels
         [string] $locationStrategy = "location"
     )
 
+    $location = @{};
     if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -1119,7 +1133,9 @@ function  Get-PricingModel {
         [String] $pricingModelName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/pricing-models" -uriQuery "?fields=id,name,description,currencyCode,location" -id $pricingModelId -name $pricingModelName
+    return Get-Item -accessKey $accessKey -uri "$baseUri/pricing-models" `
+        -uriQuery "?fields=id,name,description,currencyCode,location" -id $pricingModelId -name $pricingModelName `
+        -propertyName "Pricing model"
 }
 
 <#
@@ -1151,6 +1167,7 @@ function Get-AllScheduleTemplates
         [string] $locationStrategy = "location"
     )
 
+    $location = @{};
     if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -1173,7 +1190,9 @@ function Get-ScheduleTemplate
         [string] $scheduleTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/schedule-templates" -uriQuery "?fields=name,description,location" -id $scheduleTemplateId -name $scheduleTemplateName;
+    return Get-Item -accessKey $accessKey -uri "$baseUri/schedule-templates" `
+        -uriQuery "?fields=name,description,location" -id $scheduleTemplateId -name $scheduleTemplateName `
+        -propertyName "Schedule template"
 }
 
 function Remove-ScheduleTemplate
@@ -1236,7 +1255,7 @@ function Get-Location
         [String] $locationName
     )
 
-    return Get-Item -accessKey $accessKey -id $locationId -name $locationName -uri "$baseUri/folders";
+    return Get-Item -accessKey $accessKey -id $locationId -name $locationName -uri "$baseUri/folders" -propertyName "Folder";
 }
 
 function Get-AllCustomFields
@@ -1251,6 +1270,7 @@ function Get-AllCustomFields
         [string] $sortProperty
     )
 
+    $location = @{};
     if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -1273,7 +1293,10 @@ function Get-CustomField
         [String] $customFieldName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/custom-field-definitions" -uriQuery "?fields=id,name,key,description,defaultValue,type,location,resourceType,isMandatory,pickListOptions" -id $customFieldId -name $customFieldName;
+    return Get-Item -accessKey $accessKey -uri "$baseUri/custom-field-definitions" `
+         -propertyName "Custom field definition" `
+         -uriQuery "?fields=id,name,key,description,defaultValue,type,location,resourceType,isMandatory,pickListOptions" `
+         -id $customFieldId -name $customFieldName;
 }
 
 function Get-AllTranslationMemories 
@@ -1287,6 +1310,7 @@ function Get-AllTranslationMemories
         [string] $locationStrategy = "location"
     )
 
+    $location = @{}
     if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -1719,6 +1743,7 @@ function Get-AllTranslationQualityAssessments
         [string] $sortProperty
     )
 
+    $location = @{};
     if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -1741,7 +1766,7 @@ function Get-TranslationQualityAssessment
         [string] $tqaName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/tqa-profiles" -id $tqaId -name $tqaName;
+    return Get-Item -accessKey $accessKey -uri "$baseUri/tqa-profiles" -id $tqaId -name $tqaName -propertyName "Tqa profile";
 }
 
 function Get-AllLanguageProcessingRules 
@@ -1755,6 +1780,7 @@ function Get-AllLanguageProcessingRules
         [string] $locationStrategy = "location"
     )
 
+    $location = @{}
     if ($locationId -or $locationName) # find a way to shorten this..
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -1782,7 +1808,9 @@ function Get-LanguageProcessingRule
         [string] $languageProcessingName
     )
 
-    return Get-Item -accessKey $accessKey  -uri "$baseUri/language-processing-rules" -uriQuery "?fields=id,name,description" -id $languageProcessingId -name $languageProcessingName
+    return Get-Item -accessKey $accessKey  -uri "$baseUri/language-processing-rules" `
+             -uriQuery "?fields=id,name,description" -id $languageProcessingId -name $languageProcessingName `
+             -propertyName "Language processing rule"
 }
 
 function Get-AllFieldTemplates 
@@ -1797,6 +1825,7 @@ function Get-AllFieldTemplates
         [string] $sortProperty
     )
 
+    $location = @{};
     if ($locationId -or $locationName) # find a way to shorten this..
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -1825,7 +1854,7 @@ function Get-FieldTemplate
     )
 
     return Get-Item -accessKey $accessKey -uri "$baseUri/translation-memory/field-templates" -uriQuery "?fields=id,name,description,location" `
-                -id $fieldTemplateId -name $fieldTemplateName; # I should only put the resource not found here..
+                -id $fieldTemplateId -name $fieldTemplateName -propertyName "Field template";
 }
 
 function Get-LanguagePair {

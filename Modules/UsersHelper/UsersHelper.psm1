@@ -31,7 +31,8 @@ function Get-AllUsers
         [string] $locationStrategy = "location",
         [string] $sortProperty
     )
-    
+
+    $location = @{};
     if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -60,19 +61,32 @@ function  Get-User {
 
     if ($userId)
     {
-        $uri = "$baseUri/$userId"
+        $uri = $baseUri + "/users/" + $userId
         $headers = Get-RequestHeader -accessKey $accessKey
-        return Invoke-RestMethod -uri $uri -Headers $headers
+        return Invoke-SafeMethod {
+            Invoke-RestMethod -uri $uri -Headers $headers
+        }
     }
+    else 
+    {
+        $users = Get-AllItems -accessKey $accessKey -uri $uri;
+        if ($userEmail)
+        {
+            $user = $users | Where-Object {$_.email -eq $userEmail } | Select-Object -First 1;
+        }
+        elseif ($userFirstName -and $userLastName)
+        {
+            $user = $users | Where-Object {$_.firstName -eq $userFirstName -and $_.lastName -eq $userLastName} | Select-Object -First 1;
+        }
 
-    $users = Get-AllItems -accessKey $accessKey -uri $uri;
-    if ($userEmail)
-    {
-        return $users | Where-Object {$_.email -eq $userEmail } | Select-Object -First 1;
-    }
-    elseif ($userFirstName -and $userLastName)
-    {
-        return $users | Where-Object {$_.firstName -eq $userFirstName -and $_.lastName -eq $userLastName} | Select-Object -First 1;
+        if ($null -eq $user)
+        {
+            Write-Host "User could not be found" -ForegroundColor Green;
+        }
+        else 
+        {
+            return $user;
+        }
     }
 
 }
@@ -108,7 +122,8 @@ function Get-AllGroups # apply filter on groups and users
         [string] $locationStrategy = "bloodline",
         [string] $sortProperty
     )
-
+    
+    $location = @{};
     if ($locationId -or $locationName) # Might need some refactoring here as all the list-items will change
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
@@ -132,14 +147,13 @@ function Get-AllItems
     $headers.Add("Accept", "application/json")
     $headers.Add("Authorization", $accessKey.token)
 
-    try 
-    {
-        $response = Invoke-RestMethod $uri -Method 'GET' -Headers $headers
-        return $response.Items;        
+    $response = Invoke-SafeMethod {
+        Invoke-RestMethod $uri -Method 'GET' -Headers $headers
     }
-    catch 
+
+    if ($response)
     {
-        Write-Host "$_"
+        return $response.Items;
     }
 }
 
@@ -227,6 +241,22 @@ function Get-FilterString {
 
     # Return the filter string by joining with "&"
     return $filter -join '&'
+}
+
+function Invoke-SafeMethod 
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [scriptblock] $method
+    )
+
+    try {
+        return & $Method
+    } catch {
+        $response = ConvertFrom-Json $_;
+        Write-Host $response.Message -ForegroundColor Green;
+        return $null
+    }
 }
 
 Export-ModuleMember Get-AllUsers; 
