@@ -5,96 +5,143 @@ Creates a new project with specified parameters and uploads source files.
 .DESCRIPTION
 The `New-Project` function creates a new project using the provided access key and project details. 
 The project can be configured with various optional parameters such as source and target languages, customer details, 
-location, project template, and more. The function also handles the uploading of source files and initiates the project workflow.
+location, project template, and more. **All dependencies used for project creation must be in a bloodline relationship with the location where the project will be created.** 
+The function also handles the uploading of source files and initiates the project workflow.
 
 .PARAMETER accessKey
-The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
+(Mandatory) The access key object returned by the `Get-AccessKey` function. This is required to authenticate API requests.
 
-.PARAMETER projectName
-The name of the project to be created. This is a mandatory parameter.
+To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
 
-.PARAMETER projectDueDate
-The due date for the project in a string format. This is a mandatory parameter.
+.PARAMETER name
+(Mandatory) The name of the project to be created.
+
+.PARAMETER dueDate
+(Mandatory) The due date for the project in a string format (e.g., "2024-12-31").
+
+.PARAMETER dueTime
+(Mandatory) The due time for the project in a string format (e.g., "23:59").
 
 .PARAMETER filesPath
-The path to the directory containing the source files to be uploaded for the project. This is a mandatory parameter.
+(Mandatory) The path to the directory containing the source files to be uploaded for the project.
 
 .PARAMETER referenceFileNames
-An optional array of reference file names to be included in the project. These files should be located in the directory specified by `filesPath`.
+(Optional) An array of reference file names to be included in the project. These files should be located in the directory specified by `filesPath`.
 
 .PARAMETER sourceLanguage
-The source language code of the project.
+(Optional) The source language code of the project (e.g., "en-US").
 
 .PARAMETER targetLanguages
-An optional array of target language codes for the project. 
+(Optional) An array of target language codes for the project (e.g., @("fr-FR", "de-DE")).
 
-.PARAMETER customer
-The customer associated with the project. This can be either the name or the ID of the customer.
+.PARAMETER locationId
+(Optional) The ID of the location where the project will be managed.
 
-.PARAMETER location
-The location where the project will be managed. This can be either the name or the ID of the location.
+.PARAMETER locationName
+(Optional) The name of the location where the project will be managed.
 
-.PARAMETER description
-An optional description of the project.
+.PARAMETER projectTemplateIdOrName
+(Optional) The ID or name of a project template to be used for the project. If a template is provided, most other parameters can be omitted as the template will define them.
 
-.PARAMETER projectTemplate
-An optional project template to be used for the project. If a template is provided, most other parameters can be omitted as the template will define them.
+.PARAMETER translationEngineIdOrName
+(Optional) The ID or name of the translation engine to be used for the project.
 
-.PARAMETER translationEngine
-The translation engine to be used for the project. This can be either the name or the ID of the engine.
+.PARAMETER fileTypeConfigurationIdOrName
+(Optional) The ID or name of the file processing configuration to be used for the project.
 
-.PARAMETER fileProcessingConfiguration
-An optional file processing configuration to be used for the project. This can be either the name or the ID of the configuration.
+.PARAMETER workflowIdOrName
+(Optional) The ID or name of the workflow to be applied to the project.
 
-.PARAMETER workflow
-An optional workflow to be applied to the project. This can be either the name or the ID of the workflow.
+.PARAMETER scheduleTemplateIdOrName
+(Optional) The ID or name of the schedule template to be applied to the project.
 
-.PARAMETER pricingModel
-An optional pricing model for the project. This can be either the name or the ID of the model.
+.PARAMETER customFieldIdsOrNames
+(Optional) And array of custom fields IDs or names which will be applied on the project.
 
-.PARAMETER restrictFileDownloadSpecified
-A switch that, when specified, allows the user to control whether file downloads are restricted.
+.PARAMETER tqaIdOrName
+(Optional) The Id or Name of the Translation Quality Assessment that will be applied to the project.
+
+.PARAMETER pricingModelIdOrName
+(Optional) The ID or name of the pricing model for the project. This should match the source and target languages of the project.
+
+.PARAMETER userManagerIdsOrNames
+(Optional) An array of user manager IDs or names who will oversee the project.
+
+.PARAMETER groupManagerIdsOrNames
+(Optional) An array of group manager IDs or names that will manage the project.
+
+.PARAMETER scheduleTemplateStrategy
+(Optional) A string indicating whether the project will create a copy or use the provided schedule template.
+
+Allowed values are "copy" or "use"
+By default the value is "copy"
+
+.PARAMETER fileTypeConfigurationStrategy
+(Optional) A string indicating whether the project will create a copy or use the provided file type configuration.
+
+Allowed values are "copy" or "use"
+By default the value is "copy"
+
+.PARAMETER translationEngineStrategy
+(Optional) A string indicating whether the project will create a copy or use the provided translation engine.
+
+Allowed values are "copy" or "use"
+By default the value is "copy"
+
+.PARAMETER pricingModelStrategy
+(Optional) A string indicating whether the project will create a copy or use the provided pricing model.
+
+Allowed values are "copy" or "use"
+By default the value is "copy"
+
+.PARAMETER workflowStrategy
+(Optional) A string indicating whether the project will create a copy or use the provided workflow.
+
+Allowed values are "copy" or "use"
+By default the value is "copy"
+
+.PARAMETER tqaStrategy
+(Optional) A string indicating whether the project will create a copy or use the provided translation quality assessment.
+
+Allowed values are "copy" or "use"
+By default the value is "copy"
+
+.PARAMETER includeFileDownloadSettings
+(Optional) A boolean value indicating whether to specify the option for resticting file download.
 
 .PARAMETER restrictFileDownload
-A boolean value indicating whether file downloads should be restricted. Default is `$false`.
+(Optional) A boolean value indicating whether the files can be donwloaded after the project creation.
 
-.PARAMETER scheduletemplate
-An optional schedule template to be used for the project. This can be either the name or the ID of the template.
+.PARAMETER description
+(Optional) Project description.
 
-.PARAMETER userManagers
-An optional array of user managers who will oversee the project.
+.PARAMETER inclueGeneralSettings
+(Optional) A boolean value indicating whether to include additional settings in the project configuration. Default is `$false`.
 
-.PARAMETER groupsManager
-An optional array of groups that will manage the project.
+.PARAMETER completeDays
+(Optional) The number of days after which the project is considered complete. Default is `90` days.
 
-.PARAMETER includeSettings
-A boolean value indicating whether to include additional settings in the project configuration. Default is `$false`.
+.PARAMETER archiveDays
+(Optional) The number of days after which the project is archived. Default is `90` days.
 
-.PARAMETER configCompleteDays
-The number of days after which the project is considered complete. Default is `90` days.
-
-.PARAMETER configArchiveDays
-The number of days after which the project is archived. Default is `90` days.
-
-.PARAMETER configReminderDays
-The number of days before a reminder is sent out. Default is `7` days.
+.PARAMETER archiveReminderDays
+(Optional) The number of days before a reminder is sent out. Default is `7` days.
 
 .EXAMPLE
-New-Project -accessKey $accessKey -projectName "New Localization Project" -projectDueDate "2024-12-31" -filesPath "C:\ProjectFiles" `
-            -sourceLanguage "en-us" -targetLanguages @("fr-FR", "de-DE") -location "LocationName" -fileProcessingConfiguration "File Processing Configuration Name"
+    # Example 1: Create a new project with specified languages and location
+    New-Project -accessKey $accessKey -projectName "New Localization Project" -projectDueDate "2024-12-31" `
+                -dueTime "23:59" -filesPath "C:\ProjectFiles" -sourceLanguage "en-US" `
+                -targetLanguages @("fr-FR", "de-DE") -locationName "LocationName" `
+                -fileProcessingConfiguration "File Processing Configuration Name"
 
-This example creates a new project with the specified source and target languages, location and file type configuration, and uploads the source files from the specified path.
+This example creates a new project with the specified source and target languages, location, and file processing configuration, and uploads the source files from the specified path.
 
 .EXAMPLE
-New-Project -accessKey $accessKey -projectName "Template Based Project" -projectDueDate "2024-12-31" `
-            -filesPath "C:\ProjectFiles" -projectTemplate "StandardTemplate"
+    # Example 2: Create a new project using a template
+    New-Project -accessKey $accessKey -projectName "Template Based Project" -projectDueDate "2024-12-31" `
+                -dueTime "23:59" -filesPath "C:\ProjectFiles" -projectTemplate "StandardTemplate"
 
 This example creates a new project using a predefined project template. Other parameters such as languages and workflow are automatically set based on the template.
-
-.NOTES
-Either `location` or `customer` must be provided to determine where the project will be managed. If `projectTemplate` is provided, 
-most other parameters can be omitted as they will be automatically configured based on the template.
-
 #>
 function New-Project 
 {
