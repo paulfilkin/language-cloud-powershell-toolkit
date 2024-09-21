@@ -1072,6 +1072,53 @@ function Remove-Customer
     }
 }
 
+<#
+.SYNOPSIS
+    Creates a new customer in the system.
+
+.DESCRIPTION
+    The `New-Customer` function allows you to create a new customer record by providing the necessary details. 
+    You must specify either the `locationId` or `locationName` for the customer’s location. If you wish to include 
+    key contact details, you must provide `firstName`, `lastName`, and `email` together.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to create the customer.
+    
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary 
+    credentials for API access.
+
+.PARAMETER customerName
+    (Mandatory) The name of the customer to be created.
+
+.PARAMETER locationId
+    (Optional) The ID of the location associated with the customer. Either `locationId` or `locationName` must be provided.
+
+.PARAMETER locationName
+    (Optional) The name of the location associated with the customer. Either `locationId` or `locationName` must be provided.
+
+.PARAMETER firstName
+    (Optional) The first name of the key contact for the customer. Must be provided along with `lastName` and `email` if included.
+
+.PARAMETER lastName
+    (Optional) The last name of the key contact for the customer. Must be provided along with `firstName` and `email` if included.
+
+.PARAMETER email
+    (Optional) The email address of the key contact for the customer. Must be provided along with `firstName` and `lastName` if included.
+
+.OUTPUTS
+    Returns the newly created customer object if the operation is successful. If the customer cannot be created, 
+    no output will be returned.
+
+.EXAMPLE
+    # Example 1: Create a new customer with location ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    New-Customer -accessKey $accessKey -customerName "Acme Corp" -locationId "12345"
+
+.EXAMPLE
+    # Example 2: Create a new customer with location name and key contact details
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    New-Customer -accessKey $accessKey -customerName "Beta LLC" -locationName "Main Office" -firstName "John" -lastName "Doe" -email "john.doe@example.com"
+#>
 function New-Customer
 {
     param (
@@ -1118,6 +1165,65 @@ function New-Customer
     return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post}
 }
 
+<#
+.SYNOPSIS
+    Updates the details of an existing customer in the system.
+
+.DESCRIPTION
+    The `Update-Customer` function modifies the properties of a specified customer. 
+    You must provide either the `customerId` or `customerName` to identify the customer to be updated. 
+    The function allows for changing the customer name, RAG status (Red, Amber, Green), folder visibility (Default or Private), 
+    and custom fields. Additionally, you can update the key contact details using the user email or user ID of an existing user.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to update the customer.
+    
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary 
+    credentials for API access.
+
+.PARAMETER customerId
+    (Optional) The ID of the customer to be updated. You must provide either `customerId` or `customerName`.
+
+.PARAMETER customerName
+    (Optional) The name of the customer to be updated. You must provide either `customerId` or `customerName`.
+
+.PARAMETER name
+    (Optional) The new name for the customer. If provided, this will replace the current name.
+
+.PARAMETER ragStatus
+    (Optional) The new RAG (Red, Amber, Green) status for the customer. Acceptable values are "Red", "Amber", or "Green".
+
+.PARAMETER folderVisibility
+    (Optional) The visibility setting for the customer's folder. Acceptable values are "Default" or "Private".
+
+.PARAMETER customFieldIdsOrNames
+    (Optional) An array of custom field IDs or names to be updated at the customer level. 
+    If specified, the function will check if these fields exist.
+
+.PARAMETER userEmail
+    (Optional) The email of the key contact for the customer. If provided, this will be used to update the key contact details.
+
+.PARAMETER userId
+    (Optional) The ID of the key contact for the customer. If provided, this will be used to update the key contact details.
+
+.OUTPUTS
+    Returns a confirmation message if the customer is updated successfully. If the update fails, no output will be returned.
+
+.EXAMPLE
+    # Example 1: Update a customer name and RAG status
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-Customer -accessKey $accessKey -customerId "12345" -name "Updated Corp" -ragStatus "green"
+
+.EXAMPLE
+    # Example 2: Update folder visibility and custom fields
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-Customer -accessKey $accessKey -customerName "Beta LLC" -folderVisibility "private" -customFieldIdsOrNames @("Field1", "Field2")
+
+.EXAMPLE
+    # Example 3: Update key contact details using user email
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-Customer -accessKey $accessKey -customerId "12345" -userEmail "new.email@example.com"
+#>
 function Update-Customer 
 {
     param (
@@ -2073,6 +2179,76 @@ function Get-TranslationMemory
     return Get-Item -accessKey $accessKey -uri "$baseUri/translation-memory" -id $translationMemoryId -name $translationMemoryName -propertyName "Translation memory";
 }
 
+<#
+.SYNOPSIS
+    Creates a new translation memory in the system.
+
+.DESCRIPTION
+    The `New-TranslationMemory` function creates a new translation memory with specified properties. 
+    It requires the translation memory name, a language processing rule ID or name, a field template ID or name, 
+    and optionally location, source language, target languages, and language pairs. 
+    The language processing rule and field template must be in a bloodline relationship with the specified location.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to create the translation memory.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER name
+    (Mandatory) The name of the new translation memory.
+
+.PARAMETER languageProcessingIdOrName
+    (Mandatory) The ID or name of the language processing rule to be used for the translation memory. 
+    This must be in a bloodline relationship with the specified location.
+
+.PARAMETER fieldTemplateIdOrName
+    (Mandatory) The ID or name of the field template to be used for the translation memory. 
+    This must be in a bloodline relationship with the specified location.
+
+.PARAMETER locationId
+    (Optional) The ID of the location where the translation memory will be created. 
+    If not provided, the `locationName` parameter can be used.
+
+.PARAMETER locationName
+    (Optional) The name of the location where the translation memory will be created. 
+    If not provided, the `locationId` parameter can be used.
+
+.PARAMETER sourceLanguage
+    (Mandatory) The source language code for the translation memory.
+
+.PARAMETER targetLanguages
+    (Optional) An array of target language codes for the translation memory.
+
+.PARAMETER languagePairs
+    (Optional) An array of language pairs as PowerShell objects. 
+    This can be provided when multiple source languages are needed.
+
+    This can be provided when multiple source languages are needed and can be retrieved using the `Get-LanguagePair` method.
+
+.PARAMETER copyRight
+    (Optional) Copyright information for the translation memory.
+
+.PARAMETER description
+    (Optional) A description of the translation memory.
+
+.OUTPUTS
+    Returns the newly created translation memory object if successful. 
+
+.EXAMPLE
+    # Example 1: Create a new translation memory with source and target languages
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    New-TranslationMemory -accessKey $accessKey -name "MyTranslationMemory" -languageProcessingIdOrName "LPR123" `
+                          -fieldTemplateIdOrName "FieldTemplate456" -locationId "Location789" `
+                          -sourceLanguage "en-US" -targetLanguages @("fr-FR", "de-DE")
+
+.EXAMPLE
+    # Example 2: Create a new translation memory using language pairs
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    $languagePairs = Get-LanguagePair -sourceLanguage "en-US" -targetLanguages @("fr-FR", "de-DE")
+    New-TranslationMemory -accessKey $accessKey -name "MyTranslationMemory" -languageProcessingIdOrName "LPR123" `
+                          -fieldTemplateIdOrName "FieldTemplate456" -locationName "New York" `
+                          -languagePairs $languagePairs -copyRight "2024" -description "New translation memory for 2024 projects"
+#>
 function New-TranslationMemory 
 {
     param (
@@ -2222,6 +2398,65 @@ function Remove-TranslationMemory
     }
 }
 
+<#
+.SYNOPSIS
+    Updates an existing translation memory in the system.
+
+.DESCRIPTION
+    The `Update-TranslationMemory` function modifies an existing translation memory based on the specified properties. 
+    It requires either the translation memory ID or name to identify the translation memory, and allows updating various attributes. 
+    If a parameter is not provided, that attribute will remain unchanged.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to update the translation memory.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER translationMemoryId
+    (Optional) The ID of the translation memory to be updated. Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.PARAMETER translationMemoryName
+    (Optional) The name of the translation memory to be updated. Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.PARAMETER name
+    (Optional) The new name for the translation memory. If not provided, the name will remain unchanged.
+
+.PARAMETER copyRight
+    (Optional) The updated copyright information for the translation memory. If not provided, the copyright will remain unchanged.
+
+.PARAMETER description
+    (Optional) The updated description of the translation memory. If not provided, the description will remain unchanged.
+
+.PARAMETER sourceLanguage
+    (Optional) The updated source language code for the translation memory. This can be provided alongside target languages or language pairs.
+
+.PARAMETER targetLanguages
+    (Optional) An array of updated target language codes for the translation memory. This can be provided alongside the source language or language pairs.
+
+.PARAMETER languagePairs
+    (Optional) An array of language pairs as PowerShell objects. This can be provided when multiple source languages are needed and can be retrieved using the `Get-LanguagePair` method.
+    This can be provided when multiple source languages are needed and can be retrieved using the `Get-LanguagePair` method.
+
+.PARAMETER languageProcessingIdOrName
+    (Optional) The ID or name of the language processing rule to be associated with the translation memory. 
+    This must be in a bloodline relationship with the location of the translation memory.
+
+.PARAMETER fieldTemplateIdOrName
+    (Optional) The ID or name of the field template to be associated with the translation memory. 
+    This must also be in a bloodline relationship with the location of the translation memory.
+
+.EXAMPLE
+    # Example 1: Update a translation memory by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-TranslationMemory -accessKey $accessKey -translationMemoryId "TM123" -name "UpdatedTranslationMemory" `
+                             -copyRight "2024" -description "Updated translation memory for 2024 projects" -sourceLanguage "en" `
+                             -targetLanguages @("fr", "es") -languageProcessingIdOrName "LPR123"
+
+.EXAMPLE
+    # Example 2: Update a translation memory by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-TranslationMemory -accessKey $accessKey -translationMemoryName "OldTranslationMemory" -fieldTemplateIdOrName "FieldTemplate456"
+#>
 function Update-TranslationMemory 
 {
     param (
@@ -2375,6 +2610,88 @@ function Copy-TranslationMemory
     Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Post; }
 }
 
+<#
+.SYNOPSIS
+    Imports translation units from an external file into an existing translation memory.
+
+.DESCRIPTION
+    The `Import-TranslationMemory` function allows for the import of translation units from a specified file into an existing translation memory. 
+    The function supports multiple import options, including handling of target segments, unknown fields, and confirmation levels. 
+    It is designed to work with various file formats, including .tmx, .sdltm, .zip, .tmx.gz, and .sdlxliff.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to perform the import operation.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER sourceLanguage
+    (Mandatory) The source language code for the translation units being imported.
+
+.PARAMETER targetLanguage
+    (Mandatory) The target language code for the translation units being imported.
+
+.PARAMETER translationMemoryId
+    (Optional) The ID of the translation memory where the translation units will be imported. 
+    Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.PARAMETER translationMemoryName
+    (Optional) The name of the translation memory where the translation units will be imported. 
+    Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.PARAMETER importFileLocation
+    (Mandatory) The file path to the import file containing the translation units. 
+    Supported file formats include .tmx, .sdltm, .zip, .tmx.gz, and .sdlxliff.
+
+.PARAMETER importAsPlainText
+    (Optional) A boolean value indicating whether to import the translation units as plain text. Defaults to $false.
+
+.PARAMETER exportInvalidTranslationUnits
+    (Optional) A boolean value indicating whether to export translation units that are invalid. Defaults to $false.
+
+.PARAMETER triggerRecomputeStatistics
+    (Optional) A boolean value indicating whether to trigger a recomputation of statistics after the import. Defaults to $false.
+
+.PARAMETER targetSegmentsDifferOption
+    (Optional) Specifies how to handle target segments that differ. Acceptable values are:
+        - "addNew": Add new segments to the translation memory.
+        - "overwrite": Overwrite existing segments with the new ones.
+        - "leaveUnchanged": Keep existing segments unchanged.
+        - "keepMostRecent": Retain the most recently added segment.
+
+.PARAMETER unknownFieldsOption
+    (Optional) Specifies how to handle unknown fields during the import process. Acceptable values are:
+        - "addToTranslationMemory": Add unknown fields to the translation memory.
+        - "failTranslationUnitImport": Fail the import for units with unknown fields.
+        - "ignore": Ignore unknown fields during the import.
+        - "skipTranslationUnit": Skip translation units with unknown fields.
+
+.PARAMETER onlyImportSegmentsWithConfirmationLevels
+    (Optional) An array of confirmation levels to filter which segments to import. 
+    Acceptable values include:
+        - "translated"
+        - "approvedSignOff"
+        - "approvedTranslation"
+        - "draft"
+        - "rejectedTranslation"
+        - "rejectedSignOff"
+
+.OUTPUTS
+    Returns the result of the import operation, including any details about successfully imported segments or errors encountered.
+
+.EXAMPLE
+    # Example 1: Import translation units from a TMX file into an existing translation memory
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Import-TranslationMemory -accessKey $accessKey -sourceLanguage "de-DE" -targetLanguage "en-US" `
+                            -translationMemoryId "TM123" -importFileLocation "C:\path\to\your\file.tmx" `
+                            -importAsPlainText $false -exportInvalidTranslationUnits $true
+
+.EXAMPLE
+    # Example 2: Import SDLTM file while skipping unknown fields
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Import-TranslationMemory -accessKey $accessKey -sourceLanguage "de-DE" -targetLanguage "en-US" `
+                            -translationMemoryName "MyTranslationMemory" -importFileLocation "C:\path\to\your\file.sdltm" `
+                            -unknownFieldsOption "skipTranslationUnit"
+#>
 function Import-TranslationMemory
 {
     param (
@@ -2390,6 +2707,7 @@ function Import-TranslationMemory
         [string] $translationMemoryId,
         [string] $translationMemoryName,
 
+        [Parameter(Mandatory=$true)]
         [string] $importFileLocation,
         [bool] $importAsPlainText = $false,
         [bool] $exportInvalidTranslationUnits = $false,
@@ -2468,6 +2786,52 @@ function Import-TranslationMemory
     }
 }
 
+<#
+.SYNOPSIS
+    Exports translation units from an existing translation memory based on source and target languages.
+
+.DESCRIPTION
+    The `Export-TranslationMemory` function allows for the export of translation units from an existing translation memory into a specified file format.
+    The function supports exporting translation units based on provided source and target languages, saving the output in a .tmx.gz format.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to perform the export operation.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER sourceLanguage
+    (Mandatory) The source language code for the translation units to be exported.
+
+.PARAMETER targetLanguage
+    (Mandatory) The target language code for the translation units to be exported.
+
+.PARAMETER outputFilePath
+    (Mandatory) The file path where the exported translation units will be saved. 
+    The allowed file format for export is .tmx.gz.
+
+.PARAMETER translationMemoryId
+    (Optional) The ID of the translation memory from which the translation units will be exported. 
+    Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.PARAMETER translationMemoryName
+    (Optional) The name of the translation memory from which the translation units will be exported. 
+    Either `translationMemoryId` or `translationMemoryName` must be provided.
+
+.OUTPUTS
+    Returns the result of the export operation, including details about successfully exported segments or errors encountered.
+
+.EXAMPLE
+    # Example 1: Export translation units from a TM to a .tmx.gz file
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Export-TranslationMemory -accessKey $accessKey -sourceLanguage "en" -targetLanguage "fr" `
+                            -outputFilePath "C:\path\to\exported_file.tmx.gz" -translationMemoryId "TM123"
+
+.EXAMPLE
+    # Example 2: Export translation units using translation memory name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Export-TranslationMemory -accessKey $accessKey -sourceLanguage "de" -targetLanguage "en" `
+                            -outputFilePath "C:\path\to\exported_file.tmx.gz" -translationMemoryName "MyTranslationMemory"
+#>
 function Export-TranslationMemory
 { 
     param (
