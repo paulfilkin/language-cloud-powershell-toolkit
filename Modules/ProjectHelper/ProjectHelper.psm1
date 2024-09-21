@@ -422,6 +422,7 @@ function Get-ProjectBody
         return;
     }
 
+    $languages = @();
     if ($projectTemplateIdOrName)
     {
         $projectTemplate = Get-AllProjectTemplates -accessKey $accessKey -locationId $location.Id -locationStrategy "bloodline" `
@@ -432,6 +433,16 @@ function Get-ProjectBody
         {
             Write-Host "Project Template does not exist or it is not related to the location $($location.Name)" -ForegroundColor Green;
             return;
+        }
+
+        foreach ($item in $projectTemplate.languageDirections) {
+            # Create a new PSObject with the desired properties
+            $newObject = [PSCustomObject]@{
+                sourceLanguage = @{languageCode = $item.sourceLanguage.languageCode}
+                targetLanguage = @{languageCode = $item.targetLanguage.languageCode}
+            }
+            # Add the new object to the results array
+            $languages += $newObject
         }
 
         $body.projectTemplate = @{id = $projectTemplate.Id}
@@ -463,7 +474,7 @@ function Get-ProjectBody
             return;
         }
 
-        $body.languageDirections = @($languageDirections);
+        $languages += $languageDirections;
     }
 
     if ($translationEngineIdOrName)
@@ -677,6 +688,11 @@ function Get-ProjectBody
         }
     }
 
+    if ($languages)
+    {
+        $body.languageDirections = @($languages);
+    }
+
     return $body
 }
 
@@ -874,6 +890,7 @@ function Invoke-SafeMethod
     try {
         return & $Method
     } catch {
+        return $_;
         $response = ConvertFrom-Json $_;
         Write-Host $response.Message -ForegroundColor Green;
         return $null
