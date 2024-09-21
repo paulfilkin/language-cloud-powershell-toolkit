@@ -1,6 +1,6 @@
 # Language Cloud Powershell Toolkit
 ## Introduction
-The Language Cloud PowerShell Toolkit allows users to script the REST API available for SDL Language Cloud. The purpose of this toolkit is to automate project creation and retrieve essential resources through the PowerShell console.
+The Language Cloud PowerShell Toolkit allows users to script the REST API available for Language Cloud. The purpose of this toolkit is to automate project creation and retrieve essential resources through the PowerShell console.
 
 ## Table of Contents
 <details>
@@ -24,8 +24,8 @@ To run the scripts, ensure you have the following:
 - **PowerShell Version 7.4 or Higher**  
     If you need to install PowerShell 7.4, follow the instructions provided [here](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-windows).
 
-- **SDL Language Cloud License**  
-    Ensure you have access to an SDL Language Cloud account, as the scripts will interact with the Language Cloud API for various operations.
+- **Language Cloud License**  
+    Ensure you have access to a Language Cloud account, as the scripts will interact with the Language Cloud API for various operations.
 
 ## Installation
 1. Download the Files
@@ -201,18 +201,64 @@ This section provides detailed documentation for the functions included in the P
 
 | Function Name	| Description | Module |
 | ------ | --------- | ------  |
-| `Get-AccessKey` | Authenticates using the provided client ID, secret, and tenant ID, and returns an object containing the access token and tenant necessary for making API calls. | `AuthenticationHelper` |
-| `New-Project`                | Creates a new project                          |  `ProjectHelper`  |
-| `Get-AllProjectTemplates`    | Retrieves all project templates.               | `ResourcesHelper` |
-| `Get-AllTranslationEngines`  | Retrieves all translation engines.             | `ResourcesHelper` |
-| `Get-AllCustomers`           | Retrieves all customers.                       | `ResourcesHelper` |
-| `Get-AllFileTypeConfigurations` | Retrieves all file type configurations.     | `ResourcesHelper` |
-| `Get-AllWorkflows`           | Retrieves all workflows.                       | `ResourcesHelper` |
-| `Get-AllPricingModels`       | Retrieves all pricing models.                  | `ResourcesHelper` |
-| `Get-AllScheduleTemplates`   | Retrieves all schedule templates.              | `ResourcesHelper` |
-| `Get-AllLocations`           | Retrieves all locations.                       | `ResourcesHelper` |
-| `Get-AllUsers`               | Retrieves all users.                           | `ResourcesHelper` |
-| `Get-AllGroups`              | Retrieves all groups.                          | `ResourcesHelper` |
+| `Get-AccessKey`                            | Authenticates using the provided client ID, secret, and tenant ID, and returns an object containing the access token and tenant necessary for making API calls. | `AuthenticationHelper` |
+| `New-Project`                              | Creates a new project                                                      | `ProjectHelper`   |
+| `Get-AllProjectTemplates`                  | Retrieves all project templates.                                            | `ResourcesHelper` |
+| `Get-ProjectTemplate`                      | Retrieves a specific project template.                                     | `ResourcesHelper` |
+| `New-ProjectTemplate`                      | Creates a new project template.                                            | `ResourcesHelper` |
+| `Remove-ProjectTemplate`                   | Deletes an existing project template.                                      | `ResourcesHelper` |
+| `Update-ProjectTemplate`                   | Updates an existing project template based on specified configurations.     | `ResourcesHelper` |
+| `Get-AllTranslationEngines`                | Retrieves all translation engines.                                          | `ResourcesHelper` |
+| `Get-TranslationEngine`                    | Retrieves a specific translation engine.                                   | `ResourcesHelper` |
+| `Get-AllCustomers`                         | Retrieves all customers.                                                   | `ResourcesHelper` |
+| `Get-Customer`                             | Retrieves a specific customer.                                             | `ResourcesHelper` |
+| `New-Customer`                             | Creates a new customer.                                                   | `ResourcesHelper` |
+| `Remove-Customer`                          | Deletes an existing customer.                                             | `ResourcesHelper` |
+| `Update-Customer`                          | Updates an existing customer.                                             | `ResourcesHelper` |
+| `Get-AllWorkflows`                         | Retrieves all workflows.                                                   | `ResourcesHelper` |
+| `Get-Workflow`                             | Retrieves a specific workflow.                                            | `ResourcesHelper` |
+| `Get-AllPricingModels`                     | Retrieves all pricing models.                                             | `ResourcesHelper` |
+| `Get-PricingModel`                         | Retrieves a specific pricing model.                                        | `ResourcesHelper` |
+| `Get-AllScheduleTemplates`                 | Retrieves all schedule templates.                                          | `ResourcesHelper` |
+| `Get-ScheduleTemplate`                     | Retrieves a specific schedule template.                                    | `ResourcesHelper` |
+| `Remove-ScheduleTemplate`                  | Deletes an existing schedule template.                                     | `ResourcesHelper` |
+| `Get-AllFileTypeConfigurations`            | Retrieves all file type configurations.                                    | `ResourcesHelper` |
+| `Get-FileTypeConfiguration`                | Retrieves a specific file type configuration.                             | `ResourcesHelper` |
+| `Get-AllLocations`                         | Retrieves all locations.                                                   | `ResourcesHelper` |
+| `Get-Location`                             | Retrieves a specific location.                                            | `ResourcesHelper` |
+| `Get-AllCustomFields`                      | Retrieves all custom fields.                                              | `ResourcesHelper` |
+| `Get-CustomField`                          | Retrieves a specific custom field.                                        | `ResourcesHelper` |
+| `Copy-TranslationMemory`                   | Copies an existing translation memory.                                     | `ResourcesHelper` |
+| `Get-AllTranslationMemories`               | Retrieves all translation memories.                                        | `ResourcesHelper` |
+| `Get-TranslationMemory`                    | Retrieves a specific translation memory.                                   | `ResourcesHelper` |
+| `New-TranslationMemory`                    | Creates a new translation memory.                                         | `ResourcesHelper` |
+| `Remove-TranslationMemory`                 | Deletes an existing translation memory.                                    | `ResourcesHelper` |
+| `Update-TranslationMemory`                 | Updates an existing translation memory.                                    | `ResourcesHelper` |
+| `Import-TranslationMemory`                 | Imports an existing file to an existing translation memory.                | `ResourcesHelper` |
+| `Export-TranslationMemory`                 | Exports translation memory based on the source and target languages.       | `ResourcesHelper` |
+| `Get-AllTranslationQualityAssessments`     | Retrieves all translation quality assessments.                             | `ResourcesHelper` |
+| `Get-TranslationQualityAssessment`         | Retrieves a specific translation quality assessment.                       | `ResourcesHelper` |
+| `Get-AllLanguageProcessingRules`           | Retrieves all language processing rules.                                   | `ResourcesHelper` |
+| `Get-LanguageProcessingRule`               | Retrieves a specific language processing rule.                             | `ResourcesHelper` |
+| `Get-AllFieldTemplates`                    | Retrieves all field templates.                                            | `ResourcesHelper` |
+| `Get-FieldTemplate`                        | Retrieves a specific field template.                                      | `ResourcesHelper` |
+| `Get-LanguagePair`                         | Maps one source language to multiple target languages for project/TM creation with multiple source-target pairs. | `ResourcesHelper` |
+| `Get-AllUsers`       | Retrieves all users.                                 | `UsersHelper`    |
+| `Get-User`           | Retrieves a specific user.                           | `UsersHelper`    |
+| `Get-AllGroups`      | Retrieves all groups.                                | `UsersHelper`    |
+| `Get-AllTermbases`          | Retrieves all termbases.                             | `TerminologyHelper`  |
+| `Get-Termbase`              | Retrieves a specific termbase.                       | `TerminologyHelper`  |
+| `New-Termbase`              | Creates a new termbase.                             | `TerminologyHelper`  |
+| `Remove-Termbase`           | Deletes an existing termbase.                        | `TerminologyHelper`  |
+| `Update-Termbase`           | Updates an existing termbase.                        | `TerminologyHelper`  |
+| `Import-Termbase`           | Imports a termbase from a specified file.           | `TerminologyHelper`  |
+| `Export-Termbase`           | Exports a termbase to a specified file.             | `TerminologyHelper`  |
+| `Get-AllTermbaseTemplates`  | Retrieves all termbase templates.                    | `TerminologyHelper`  |
+| `Get-TermbaseTemplate`      | Retrieves a specific termbase template.              | `TerminologyHelper`  |
+| `Remove-TermbaseTemplate`   | Deletes an existing termbase template.               | `TerminologyHelper`  |
+| `New-TermbaseTemplate`      | Creates a new termbase template.                     | `TerminologyHelper`  |
+| `Update-TermbaseTemplate`   | Updates an existing termbase template.               | `TerminologyHelper`  |
+| `Get-Field`                 | Formats fields for termbase and termbase templates creation/update. | `TerminologyHelper`  |
 
 ## Ensuring File Permissions for Toolkit Files
 
