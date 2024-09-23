@@ -247,11 +247,18 @@ function New-Termbase
     $body = [ordered]@{
         name = $name
         location = $location.Id 
-        description = $description
-        copyright = $copyRight
         termbaseStructure = @{
             languages = @()
         }
+    }
+
+    if ($description)
+    {
+        $body.description = $description
+    }
+    if ($copyRight)
+    {
+        $body.copyright = $copyRight;
     }
 
     $fieldDefinitions = @();
@@ -576,7 +583,7 @@ function Import-Termbase
         $body = $multipartContent
 
         $response = Invoke-SafeMethod {
-            return Invoke-RestMethod -Uri $uri -Method 'POST' -Headers $headers -Body $body
+            Invoke-RestMethod -Uri $uri -Method 'POST' -Headers $headers -Body $body
         }
 
         if ($response)
@@ -1017,8 +1024,14 @@ function New-TermbaseTemplate
     $body = [ordered]@{
         name = $name
         location = $location.Id 
-        description = $description
-        copyright = $copyRight
+    }
+    if ($description)
+    {
+        $body.description = $description
+    }
+    if ($copyRight)
+    {
+        $body.copyright = $copyRight;
     }
 
     $fieldDefinitions = @();
