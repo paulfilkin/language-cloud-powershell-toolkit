@@ -1507,7 +1507,9 @@ function Update-Customer
 
     $uri = "$baseUri/customers/$($customer.Id)";
     $headers = Get-RequestHeader -accessKey $accessKey;
-    $body = [ordered]@{};
+    $body = [ordered]@{
+        name = $customer.name
+    };
 
     if ($name)
     {

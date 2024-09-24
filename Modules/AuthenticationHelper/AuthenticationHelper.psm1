@@ -39,36 +39,91 @@ function Get-AccessKey
         [String] $lcTenant
     )
 
+    # Define the token file path in the same directory as the script
+    $tokenFile = Join-Path -Path $PSScriptRoot -ChildPath "accessToken.json"
 
+    # Check if JSON file exists
+    if (Test-Path $tokenFile) {
+        # Read the JSON file
+        $tokenData = Get-Content $tokenFile | ConvertFrom-Json
+        
+        # Check if the token data and expiration are valid
+        if ($tokenData -and $tokenData.expires_at) {
+            $currentTime = Get-Date
+            $tokenExpiration = [datetime]::Parse($tokenData.expires_at)
+
+            # If token is valid, return it
+            if ($currentTime -lt $tokenExpiration) {
+                return @{
+                    "token" = $tokenData.token
+                    "tenant" = $tokenData.tenant
+                }
+            }
+        }
+    }
+
+    # If JSON doesn't exist or token is expired, request a new token
     $uri = "https://sdl-prod.eu.auth0.com/oauth/token"
-
     $headers = @{
         "Content-Type" = "application/json"
         "Accept" = "application/json"
     }
-
     $body = @{
-        'client_id' = $id 
+        'client_id'     = $id 
         'client_secret' = $secret
-        'audience' = "https://api.sdl.com"
-        'grant_type' = "client_credentials"
+        'audience'      = "https://api.sdl.com"
+        'grant_type'    = "client_credentials"
     }
     $json = $body | ConvertTo-Json
 
     try
     {
-        $response = Invoke-RestMethod -Headers $headers -Uri $uri -Body $json -method Post
-        $accessKey = @{
-            "token" = "Bearer $($response.access_token)"
-            "tenant" = $lcTenant
-        }
+        $response = Invoke-RestMethod -Headers $headers -Uri $uri -Body $json -Method Post
 
-        return $accessKey;
+        if ($response -and $response.access_token -and $response.expires_in) {
+
+            $expiresInSeconds = $response.expires_in
+            $expirationTime = (Get-Date).AddSeconds($expiresInSeconds)
+
+            $accessKeyData = @{
+                "token"      = "Bearer $($response.access_token)"
+                "tenant"     = $lcTenant
+                "client_id"  = $id
+                "expires_at" = $expirationTime.ToString("yyyy-MM-ddTHH:mm:ss")
+            }
+
+            return @{
+                "token" = $accessKeyData.token
+                "tenant" = $accessKeyData.tenant
+            }
+        }
+        else {
+            Write-Host "Error: Received invalid token response."
+        }
     }
     catch 
     {
-        Write-host "$_"
+        Write-Host "Error retrieving token: $_"
     }
 }
 
+$name = "accessKey.json"
+$root = $PSScriptRoot;
+
+function Get-AccessKeyFile 
+{
+    $filePath = $root + "/" + $name;
+
+    if (Test-Path -Path $filePath)
+    {
+        return Get-Item -Path $filePath;
+    }
+}
+
+function New-AccessKeyFile 
+{
+
+}
+
+Export-ModuleMember Get-AccessKeyFile;
 Export-ModuleMember Get-AccessKey;

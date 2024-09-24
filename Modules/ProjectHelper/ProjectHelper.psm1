@@ -248,6 +248,59 @@ function New-Project
     Write-Host "Project created..." -ForegroundColor Green
 }
 
+<#
+.SYNOPSIS
+    Retrieves all projects available in the system.
+
+.DESCRIPTION
+    The `Get-AllProjects` function retrieves a list of all projects in the system. 
+    You can optionally filter the results based on the location ID or name, and define a strategy for fetching projects from specific locations. Additionally, you can sort the projects based on a specified property.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the projects.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER locationId
+    (Optional) The ID of the specific location from which to retrieve projects. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationName
+    (Optional) The name of the location from which to retrieve projects. You can specify either a location ID or name, but not both.
+
+.PARAMETER locationStrategy
+    (Optional) The strategy to be used for fetching projects in relation to the provided location.
+    The available options are:
+        - "location" (default): Retrieves projects from the specified location.
+        - "bloodline": Retrieves projects from the specified location and its parent folders.
+        - "lineage": Retrieves projects from the specified location and its subfolders.
+        - "genealogy": Retrieves projects from both subfolders and parent folders of the specified location.
+
+.PARAMETER sortProperty
+    (Optional) Specifies the property by which to sort the projects. You can sort by fields such as "name", "id", or other relevant project metadata fields.
+
+.OUTPUTS
+    Returns a list of projects containing relevant details such as ID, name, and analysis statistics, along with other related metadata.
+
+.EXAMPLE
+    # Example 1: Retrieve all projects from the default location
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllProjects -accessKey $accessKey
+
+.EXAMPLE
+    # Example 2: Retrieve projects from a specific location by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllProjects -accessKey $accessKey -locationId "12345"
+
+.EXAMPLE
+    # Example 3: Retrieve projects from a specific location using the lineage strategy
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllProjects -accessKey $accessKey -locationName "FolderA" -locationStrategy "lineage"
+
+.EXAMPLE
+    # Example 4: Retrieve all projects and sort by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllProjects -accessKey $accessKey -sortProperty "name"
+#>
 function Get-AllProjects {
     param (
         [Parameter(Mandatory=$true)]
@@ -273,6 +326,39 @@ function Get-AllProjects {
     return Get-AllItems -accessKey $accessKey -uri $uri;
 }
 
+<#
+.SYNOPSIS
+    Retrieves a specific project by ID or name.
+
+.DESCRIPTION
+    The `Get-Project` function retrieves the details of a specific project based on the provided project ID or name.
+    Either the `projectId` or `projectName` must be provided to retrieve the project information.
+    If both parameters are provided, the function will prioritize `projectId`.
+
+.PARAMETER accessKey
+    (Mandatory) The access key required for authentication and authorization to query the project.
+
+    To obtain this access key, you can use the `Get-AccessKey` method, which retrieves the necessary credentials for API access.
+
+.PARAMETER projectId
+    (Optional) The ID of the project to retrieve. Either `projectId` or `projectName` must be provided.
+
+.PARAMETER projectName
+    (Optional) The name of the project to retrieve. Either `projectId` or `projectName` must be provided.
+
+.OUTPUTS
+    Returns the specified project with fields such as ID, name, and related metadata.
+
+.EXAMPLE
+    # Example 1: Retrieve a project by its ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Project -accessKey $accessKey -projectId "12345"
+
+.EXAMPLE
+    # Example 2: Retrieve a project by its name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Project -accessKey $accessKey -projectName "MyProject"
+#>
 function Get-Project 
 {
     param (
