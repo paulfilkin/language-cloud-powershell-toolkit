@@ -48,7 +48,9 @@ function Get-AccessKey
         $tokenData = Get-Content $tokenFile | ConvertFrom-Json
         
         # Check if the token data and expiration are valid
-        if ($tokenData -and $tokenData.expires_at) {
+        if ($tokenData `
+                -and $tokenData.tenant -eq $lcTenant `
+                -and $tokenData.expires_at) {
             $currentTime = Get-Date
             $tokenExpiration = [datetime]::Parse($tokenData.expires_at)
 
@@ -92,6 +94,9 @@ function Get-AccessKey
                 "expires_at" = $expirationTime.ToString("yyyy-MM-ddTHH:mm:ss")
             }
 
+            # Write the token data to accessToken.json (create or update)
+            $accessKeyData | ConvertTo-Json | Set-Content -Path $tokenFile
+
             return @{
                 "token" = $accessKeyData.token
                 "tenant" = $accessKeyData.tenant
@@ -105,24 +110,6 @@ function Get-AccessKey
     {
         Write-Host "Error retrieving token: $_"
     }
-}
-
-$name = "accessKey.json"
-$root = $PSScriptRoot;
-
-function Get-AccessKeyFile 
-{
-    $filePath = $root + "/" + $name;
-
-    if (Test-Path -Path $filePath)
-    {
-        return Get-Item -Path $filePath;
-    }
-}
-
-function New-AccessKeyFile 
-{
-
 }
 
 Export-ModuleMember Get-AccessKeyFile;

@@ -1,6 +1,8 @@
 # Language Cloud Powershell Toolkit
 ## Introduction
-The Language Cloud PowerShell Toolkit allows users to script the REST API available for Language Cloud. The purpose of this toolkit is to automate project creation and retrieve essential resources through the PowerShell console.
+The Language Cloud PowerShell Toolkit integrates with [Language Cloud](https://languagecloud.sdl.com/lc/api-docs/) enabling users to script and automate actions using the publicly available APIs. The purpose of this toolkit is to automate project creation and retrieve essential resources through the PowerShell console.
+
+For detailed guidance and information on available endpoints, please refer to the [API Documentation](https://languagecloud.sdl.com/lc/api-docs/authentication).
 
 ## Table of Contents
 <details>
@@ -11,6 +13,7 @@ The Language Cloud PowerShell Toolkit allows users to script the REST API availa
   - [Configuring and running the Sample Roundtrip script](#configuring-and-running-the-sample-roundtrip-script)
   - [Importing and Using PowerShell Modules](#importing-and-using-powershell-modules)
   - [Accessing Module Documentation](#accessing-module-documentation)
+  - [Authentication](#authentication)
   - [Function Documentation](#function-documentation)
   - [Ensuring File Permissions for Toolkit Files](#ensuring-file-permissions-for-toolkit-files)
   - [Contribution](#contribution)
@@ -29,7 +32,7 @@ To run the scripts, ensure you have the following:
 
 ## Installation
 1. Download the Files
-    - Obtain all necessary files: Ensure you have downloaded the toolkit files, including sample roundtrip script and PowerShell modules. These files should be obtained from the [here](#ensuring-file-permissions-for-toolkit-files).
+    - Obtain all necessary files: Ensure you have downloaded the toolkit files, including sample roundtrip script and PowerShell modules. These files should be obtained from the [here](https://github.com/RWS/language-cloud-powershell-toolkit/releases).
     - After downloading, you may need to unblock the zip file. For instructions on how to unblock files, see [Ensuring File Permissions for Toolkit Files](#ensuring-file-permissions-for-toolkit-files).
 2. Create Required Folders
     - Create the following folders if they do not already exist:
@@ -44,6 +47,7 @@ To run the scripts, ensure you have the following:
         -   `...\Powershell\Modules\ResourcesHelper`
         -   `...\Powershell\Modules\ProjectHelper`
         -   `...\Powershell\Modules\UsersHelper`
+        -   `...\Powershell\Modules\TerminologyHelper`
     - Ensure each module folder contains its respective `.psd1` and `.psm1` files.
 5. Verify File Locations
     - Confirm the locations of the files:
@@ -121,6 +125,7 @@ Before using the functions provided by the modules, you need to ensure they are 
       Import-Module -Name ProjectHelper 
       Import-Module -Name ResourcesHelper 
       Import-Module -Name UsersHelper 
+      Import-Module -Name TerminologyHelper 
       ```
 3. Import Modules from Specific Path
     - If the modules are not available in the environment path, you will need to import them from their specific location. Use the full path to the module when importing. For example:
@@ -129,6 +134,7 @@ Before using the functions provided by the modules, you need to ensure they are 
       Import-Module -Name "C:\Users\{your_user_name}\Documents\Powershell\Modules\ProjectHelper" 
       Import-Module -Name "C:\Users\{your_user_name}\Documents\Powershell\Modules\ResourcesHelper"
       Import-Module -Name "C:\Users\{your_user_name}\Documents\Powershell\Modules\UsersHelper"
+      Import-Module -Name "C:\Users\{your_user_name}\Documents\Powershell\Modules\TerminologyHelper"
       ```
 
 #### Permanently Add the Module Path to `$env:PSModulePath`
@@ -196,6 +202,11 @@ The toolkit has been documented with `Get-Help` to provide detailed information 
 
 By using `Get-Help`, you can access comprehensive documentation and examples for all the functions available in the toolkit, aiding you in effectively utilizing the provided modules.
 
+## Authentication
+The `Get-AccessKey` function is responsible for making the request to retrieve the authentication token. It then converts the response into a PowerShell object, which can be used for subsequent API calls.
+
+To minimize the number of requests made, the AccessKey stores the authentication details in a JSON file within the AuthenticationHelper module. If the same tenant and client ID are used, and the token has not expired, the stored details will be reused. Otherwise, the token will be refreshed, and the content in the JSON file will be overwritten.
+
 ## Function Documentation
 This section provides detailed documentation for the functions included in the PowerShell script modules.
 
@@ -203,6 +214,8 @@ This section provides detailed documentation for the functions included in the P
 | ------ | --------- | ------  |
 | `Get-AccessKey`                            | Authenticates using the provided client ID, secret, and tenant ID, and returns an object containing the access token and tenant necessary for making API calls. | `AuthenticationHelper` |
 | `New-Project`                              | Creates a new project                                                      | `ProjectHelper`   |
+| `Get-AllProjects`                          | Retrieves all projects.                                                    | `ProjectHelper`   |
+| `Get-Project`                              | Retrieves a specifiec project.                                             | `ProjectHelper`   |
 | `Get-AllProjectTemplates`                  | Retrieves all project templates.                                            | `ResourcesHelper` |
 | `Get-ProjectTemplate`                      | Retrieves a specific project template.                                     | `ResourcesHelper` |
 | `New-ProjectTemplate`                      | Creates a new project template.                                            | `ResourcesHelper` |
@@ -285,10 +298,17 @@ Windows may block files downloaded from the internet for security reasons. To en
 - Click "OK" to close the Properties dialog.
 
 ## Contribution
-If you want to add a new functionality or you spot a bug please fill free to create a pull request with your changes.
+If you want to add a new functionality or you spot a bug please fill free to create a [pull request](https://www.codenewbie.org/blogs/how-to-make-a-pull-request) with your changes.
 
 ## Issues
-If you find an issue you report it here.
+If you find an issue you report it [here](https://github.com/RWS/language-cloud-powershell-toolkit/issues).
 
 ## Changes
 ### Version
+#### v1.0.0.0
+- First Implementation of the Language Cloud PowerShell Toolkit
+- Implemented key modules:
+    - **AuthenticationHelper**: Manages authentication and token storage.   
+    - **ProjectHelper**: Facilitates project-related operations.
+    - **ResourcesHelper**: Handles resource management tasks.
+    - **UsersHelper**: Supports user-related operations.
