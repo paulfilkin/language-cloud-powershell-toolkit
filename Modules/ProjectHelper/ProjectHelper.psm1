@@ -320,7 +320,7 @@ function Get-AllProjects {
     }
 
     $uri = Get-StringUri -root "$baseUri/projects" `
-                         -location $location -fields "fields=id,name,analysisStatistics" `
+                         -location $location -fields "fields=id,name" `
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
     return Get-AllItems -accessKey $accessKey -uri $uri;
@@ -370,8 +370,8 @@ function Get-Project
     )
 
     return Get-ProjectItem -accessKey $accessKey -uri "$baseUri/projects" -id $projectId -name $projectName `
-        -uriQuery "?fields=id,name,analysisStatistics" `
-        -propertyName "Project "
+        -uriQuery "?fields=id,name" `
+        -propertyName "Project"
 }
 
 
