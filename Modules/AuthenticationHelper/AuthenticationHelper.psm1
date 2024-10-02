@@ -50,6 +50,7 @@ function Get-AccessKey
         # Check if the token data and expiration are valid
         if ($tokenData `
                 -and $tokenData.tenant -eq $lcTenant `
+                -and $tokenData.client_id -eq $id `
                 -and $tokenData.expires_at) {
             $currentTime = Get-Date
             $tokenExpiration = [datetime]::Parse($tokenData.expires_at)
@@ -76,6 +77,7 @@ function Get-AccessKey
         'audience'      = "https://api.sdl.com"
         'grant_type'    = "client_credentials"
     }
+
     $json = $body | ConvertTo-Json
 
     try
@@ -112,5 +114,4 @@ function Get-AccessKey
     }
 }
 
-Export-ModuleMember Get-AccessKeyFile;
 Export-ModuleMember Get-AccessKey;
