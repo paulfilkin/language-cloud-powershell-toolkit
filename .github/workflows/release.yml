@@ -21,7 +21,7 @@ jobs:
         shell: pwsh
         run: |
           chcp 65001
-          $APPVERSION="$($env:TOOLKIT_VERSION).$($env:GITHUB_RUN_NUMBER)"
+          $APPVERSION="$($env:TOOLKIT_VERSION).0"
           $RunVersion ="RELEASEVERSION=$APPVERSION"
           Write-Host "$RunVersion=$RunVersion" 
           $RunVersion | Out-File -FilePath $env:GITHUB_ENV -Append
