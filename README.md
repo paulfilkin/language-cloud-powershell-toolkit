@@ -32,7 +32,7 @@ To run the scripts, ensure you have the following:
 
 ## Installation
 1. Download the Files
-    - Obtain all necessary files: Ensure you have downloaded the toolkit files, including sample roundtrip script and PowerShell modules. These files should be obtained from the [here](https://github.com/RWS/language-cloud-powershell-toolkit/releases).
+    - Ensure you have downloaded all necessary files for the toolkit, including the sample roundtrip scripts and PowerShell modules. These files are available at the [official releases page](https://github.com/RWS/language-cloud-powershell-toolkit/releases). Be sure to download the latest release to ensure you have the most up-to-date version of the toolkit.
     - After downloading, you may need to unblock the zip file. For instructions on how to unblock files, see [Ensuring File Permissions for Toolkit Files](#ensuring-file-permissions-for-toolkit-files).
 2. Create Required Folders
     - Create the following folders if they do not already exist:
