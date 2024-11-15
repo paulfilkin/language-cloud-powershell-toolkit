@@ -14,6 +14,7 @@ For detailed guidance and information on available endpoints, please refer to th
   - [Importing and Using PowerShell Modules](#importing-and-using-powershell-modules)
   - [Accessing Module Documentation](#accessing-module-documentation)
   - [Authentication](#authentication)
+  - [Retrieve Your Client ID, Client Secret, and Tenant ID](#retrieve-your-client-id-client-secret-and-tenant-id)
   - [Function Documentation](#function-documentation)
   - [Ensuring File Permissions for Toolkit Files](#ensuring-file-permissions-for-toolkit-files)
   - [Contribution](#contribution)
@@ -31,6 +32,21 @@ To run the scripts, ensure you have the following:
     Ensure you have access to a Language Cloud account, as the scripts will interact with the Language Cloud API for various operations.
 
 ## Installation
+### **1. Using the MSI Installer**
+For a quicker and more streamlined installation, you can use the MSI installer. This method automates the entire process, saving you time and ensuring all necessary files are placed in the correct locations.
+
+1. **Download the MSI Installer**
+    - Download the MSI installer from the [official releases page](https://github.com/RWS/language-cloud-powershell-toolkit/releases).
+
+2. **Run the MSI Installer**
+    - Double-click the downloaded MSI file to begin the installation process.
+    - Follow the on-screen prompts to install the toolkit. The installer will automatically place the necessary scripts and modules in the correct directories.
+3. **Verify Installation**
+    - After the installation is complete, verify that the toolkit has been correctly installed by checking the installation path.
+
+### **2. Manual Instalation**
+If you prefer to manually install the toolkit, follow these steps:
+
 1. Download the Files
     - Ensure you have downloaded all necessary files for the toolkit, including the sample roundtrip scripts and PowerShell modules. These files are available at the [official releases page](https://github.com/RWS/language-cloud-powershell-toolkit/releases). Be sure to download the latest release to ensure you have the most up-to-date version of the toolkit.
     - After downloading, you may need to unblock the zip file. For instructions on how to unblock files, see [Ensuring File Permissions for Toolkit Files](#ensuring-file-permissions-for-toolkit-files).
@@ -58,28 +74,8 @@ To run the scripts, ensure you have the following:
 ### Configuring the Sample Roundtrip
 To configure the roundtrip scripts, you need to provide specific authentication details, including the **Client ID**, **Client Secret**, and **Tenant ID**. Follow the steps below to obtain and populate these values.
 
-1. **Retrieve Your Client ID and Client Secret:** To obtain your Client ID and Client Secret, follow these instructions:
-    - **Log in** to the RWS Trados Enterprise web UI as a human Administrator user. If you do not have administrator access, contact your administrator for assistance.
-    - **Expand the account menu** in the top right corner and select Integrations.
-    - Navigate to the **Applications** sub-tab.
-    - Click on **New Application** and enter the following information:
-        - **Name**: Enter a unique name for your custom application.
-        - **(Optional) URL**: Enter your custom application URL.
-        - **(Optional) Description**: Enter any relevant details.   
-        - **Service User**: Select a service user from the dropdown.
-    - Click **Add**.
-    - Back in the **Applications** sub-tab, select the checkbox corresponding to your application and then click **Edit**.
-    - On the **Overall Information** page, you can change any of the following if necessary: name, URL, or description.
-    - On the **WebHooks** page:
-        - Enter a default callback URL for your application Webhooks (all Webhooks defined in RWS Language Cloud).
-        - Enter a value for **Webhook URL** (this is your Webhook endpoint URL that RWS Language Cloud will call).
-        - Select one or more event types and hit Enter. You can create a separate webhook for every event you are interested in or combine notifications for multiple event types into one webhook.
-        - Note that if you delete your application, all its associated webhooks will also be deleted.
-    - Finally, navigate to the **API Access** page to retrieve your **Client ID** and **Client Secret**.
-2. **Retrieve Your Tenant ID:**
-    - Navigate to the **Users** section in the RWS Trados Enterprise web UI.
-    - Select **Manage Account**
-    - Copy your **Trados Account ID**. This ID serves as your **Tenant ID**
+1. **Retrieve Your Client ID, Client Secret, and Tenant ID:** For detailed instructions on how to obtain your Client ID, Client Secret, and Tenant ID, refer to the [Retrieve Your Client ID, Client Secret, and Tenant ID](#retrieve-your-client-id-client-secret-and-tenant-id) section. Follow the steps in that section to gather these values.
+
 3. **Update the Script**: After obtaining your Client ID, Client Secret, and Tenant ID, update the script with the retrieved values.
     ```powershell
         # Define the client ID, client secret, and tenant ID for authentication
@@ -87,6 +83,7 @@ To configure the roundtrip scripts, you need to provide specific authentication 
         $clientSecret = "YOUR_CLIENT_SECRET"  # Change this with your actual client secret
         $lcTenant = "YOUR_TENANT_ID"          # Change this with your actual tenant ID
     ```
+
 ### Running the Sample Roundtrip script.
 This section assumes that you have already configured the `Sample_Roundtrip.ps1` script and set up your environment as described in the previous sections. To run the script, follow these steps:
 1. Open PowerShell 7.4 or Higher
@@ -155,6 +152,8 @@ If you want to add the module path permanently so that it remains available acro
         ```
     - You should see your new path included in the output.
 
+    **Note: If you installed the toolkit using the MSI installer, the installation path should already be automatically added to your environment path, and you won’t need to manually add it.**
+
 ### Using the Modules 
 Once the modules are imported, you can start using their functions in PowerShell 7. Each module provides specific cmdlets and functions that you can call directly in your session. For example:
   - List available functions in a module:
@@ -203,9 +202,39 @@ The toolkit has been documented with `Get-Help` to provide detailed information 
 By using `Get-Help`, you can access comprehensive documentation and examples for all the functions available in the toolkit, aiding you in effectively utilizing the provided modules.
 
 ## Authentication
-The `Get-AccessKey` function is responsible for making the request to retrieve the authentication token. It then converts the response into a PowerShell object, which can be used for subsequent API calls.
+The `Get-AccessKey` function is the starting point of the toolkit. It is responsible for making the request to retrieve the authentication token, using the Client ID, Client Secret, and Tenant ID. Once the token is retrieved, it is converted into a PowerShell object, which can be used for subsequent API calls within the toolkit.
 
-To minimize the number of requests made, the AccessKey stores the authentication details in a JSON file within the AuthenticationHelper module. If the same tenant and client ID are used, and the token has not expired, the stored details will be reused. Otherwise, the token will be refreshed, and the content in the JSON file will be overwritten.
+To minimize the number of requests made, the authentication details are stored in a JSON file within the AuthenticationHelper module. If the same tenant and client ID are used, and the token has not expired, the stored details will be reused. Otherwise, the token will be refreshed, and the content in the JSON file will be overwritten.
+
+You can call the `Get-AccessKey` method with your **Client ID**, **Client Secret**, and **Tenant ID** to retrieve the access token. Once the token is retrieved, you can proceed with all other available methods in the toolkit.
+
+For instructions on how to retrieve your Client ID, Client Secret, and Tenant ID, refer to the [Retrieve Your Client ID, Client Secret, and Tenant ID](#retrieve-your-client-id-client-secret-and-tenant-id) section.
+
+## Retrieve Your Client ID, Client Secret, and Tenant ID
+To integrate with RWS Trados Enterprise, you'll need your Client ID, Client Secret, and Tenant ID. Follow these instructions to obtain them:
+
+1. **Retrieve Your Client ID and Client Secret:** To obtain your Client ID and Client Secret, follow these instructions:
+    - **Log in** to the RWS Trados Enterprise web UI as a human Administrator user. If you do not have administrator access, contact your administrator for assistance.
+    - **Expand the account menu** in the top right corner and select Integrations.
+    - Navigate to the **Applications** sub-tab.
+    - Click on **New Application** and enter the following information:
+        - **Name**: Enter a unique name for your custom application.
+        - **(Optional) URL**: Enter your custom application URL.
+        - **(Optional) Description**: Enter any relevant details.   
+        - **Service User**: Select a service user from the dropdown.
+    - Click **Add**.
+    - Back in the **Applications** sub-tab, select the checkbox corresponding to your application and then click **Edit**.
+    - On the **Overall Information** page, you can change any of the following if necessary: name, URL, or description.
+    - On the **WebHooks** page:
+        - Enter a default callback URL for your application Webhooks (all Webhooks defined in RWS Language Cloud).
+        - Enter a value for **Webhook URL** (this is your Webhook endpoint URL that RWS Language Cloud will call).
+        - Select one or more event types and hit Enter. You can create a separate webhook for every event you are interested in or combine notifications for multiple event types into one webhook.
+        - Note that if you delete your application, all its associated webhooks will also be deleted.
+    - Finally, navigate to the **API Access** page to retrieve your **Client ID** and **Client Secret**.
+2. **Retrieve Your Tenant ID:**
+    - Navigate to the **Users** section in the RWS Trados Enterprise web UI.
+    - Select **Manage Account**
+    - Copy your **Trados Account ID**. This ID serves as your **Tenant ID**
 
 ## Function Documentation
 This section provides detailed documentation for the functions included in the PowerShell script modules.
@@ -305,6 +334,9 @@ If you find an issue you report it [here](https://github.com/RWS/language-cloud-
 
 ## Changes
 ### Version
+#### v1.0.1.0
+- Added an MSI installer for streamlined toolkit installation.
+
 #### v1.0.0.0
 - First Implementation of the Language Cloud PowerShell Toolkit
 - Implemented key modules:

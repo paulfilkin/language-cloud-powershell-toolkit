@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Fragment>
+		<!-- Install Directory -->
+		<Directory Id="TARGETDIR" Name="SourceDir">
+
+			<Directory Id="PersonalFolder">
+				<Directory Id="INSTALLDIR" Name="PowerShell">
+					<!-- Modules Directory -->
+					<Directory Id="ModulesFolder" Name="Modules">
+						<Directory Id="AuthenticationHelper" Name="AuthenticationHelper" />
+						<Directory Id="ProjectHelper" Name="ProjectHelper" />
+						<Directory Id="ResourcesHelper" Name="ResourcesHelper" />
+						<Directory Id="TerminologyHelper" Name="TerminologyHelper" />
+						<Directory Id="UsersHelper" Name="UsersHelper" />
+					</Directory>
+
+					<!-- Documentation Directory -->
+					<Directory Id="DocumentationFolder" Name="Documentation" />
+				</Directory>
+
+				<!-- Desktop Directory -->
+				<Directory Id="DesktopFolder" Name="Desktop" />
+
+				<!-- Start Menu Directory -->
+				<Directory Id="ProgramMenuFolder">
+					<Directory Id="ApplicationProgramsFolder" Name="Language Cloud PowerShell Toolkit" />
+				</Directory>
+			</Directory>
+		</Directory>
+	</Fragment>
+</Wix>

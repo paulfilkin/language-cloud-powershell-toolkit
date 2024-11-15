@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Include>
+	<?define productVersion = "1.0.1"?>
+	<?define upgradeCode = "23aa7945-2f96-459e-85d0-26d26484b5ac"?>
+	<?define appName = "Language Cloud PowerShell Toolkit"?>
+	<?define manufacturer = "Trados AppStore Team"?>
+</Include>

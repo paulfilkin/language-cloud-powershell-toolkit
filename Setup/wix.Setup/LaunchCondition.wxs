@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Fragment>
+		<Property Id="POWERSHELL7_64_PATH">
+			<DirectorySearch Id="PowerShell7_64_DirSearch"
+							 Path="C:\Program Files\PowerShell\7"
+							 Depth="0">
+				<FileSearch Id="PowerShell7_64_FileSearch" Name="pwsh.exe" />
+			</DirectorySearch>
+		</Property>
+
+		<!-- Check for PowerShell 7 in Program Files (x86) -->
+		<Property Id="POWERSHELL7_32_PATH">
+			<DirectorySearch Id="PowerShell7_32_DirSearch"
+							 Path="C:\Program Files (x86)\PowerShell\7"
+							 Depth="0">
+				<FileSearch Id="PowerShell7_32_FileSearch" Name="pwsh.exe" />
+			</DirectorySearch>
+		</Property>
+
+		<!-- Launch Condition to Require PowerShell 7 Presence -->
+		<Condition Message="PowerShell 7 or higher must be installed to proceed.">
+			<![CDATA[Installed OR POWERSHELL7_64_PATH OR POWERSHELL7_32_PATH]]>
+		</Condition>
+		
+		<ComponentGroup Id="LaunchConditions" />
+	</Fragment>
+</Wix>

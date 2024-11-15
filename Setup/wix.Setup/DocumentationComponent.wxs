@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Fragment>
+		<Component Id="README" Directory="DocumentationFolder" Guid="d46e71ea-8893-440c-9bc1-a7936cb18936">
+			<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit\Documentation" Name="Installed" Type="integer" Value="1" Action="write" />
+			<File Source="..\..\README.md" />
+		</Component>
+	</Fragment>
+</Wix>

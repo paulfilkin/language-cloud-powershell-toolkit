@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Fragment>
+		<Component Id="c_Sample_Roundtrip.ps1" Directory="INSTALLDIR" Guid="1a77ee85-ef66-4058-94ff-adfe2ce8fbbc">
+			<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit" Name="Installed" Type="integer" Value="1" Action="write" />
+			<File Source="..\..\Sample_Roundtrip.ps1" />
+		</Component>
+	</Fragment>
+</Wix>

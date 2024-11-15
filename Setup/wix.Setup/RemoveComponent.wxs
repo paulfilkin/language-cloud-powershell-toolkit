@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Fragment>
+		<Component Id="c_RemoveUsersFolders" Directory="INSTALLDIR" Guid="35009af0-6223-4794-9a64-baf240ac44da">
+			<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit" Name="Installed" Type="integer" Value="1" Action="write" />
+			<RemoveFolder Id="RemoveDocumentationFolder" Directory="DocumentationFolder" On="uninstall"/>
+			<RemoveFolder Id="r_ModulesFolder" Directory="ModulesFolder" On="uninstall"/>
+			<RemoveFolder Id="r_AuthenticationHelper" Directory="AuthenticationHelper" On="uninstall"/>
+			<RemoveFolder Id="r_ProjectHelper" Directory="ProjectHelper" On="uninstall"/>
+			<RemoveFolder Id="r_ResourcesHelper" Directory="ResourcesHelper" On="uninstall"/>
+			<RemoveFolder Id="r_TerminologyHelper" Directory="TerminologyHelper" On="uninstall"/>
+			<RemoveFolder Id="r_UsersHelper" Directory="UsersHelper" On="uninstall"/>
+			
+			<RemoveFolder Id="r_INSTALLDIR" On="uninstall"/>
+			<RemoveRegistryValue Id="RemoveInstalledRegistry" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit" Name="Installed" />
+		</Component>
+	</Fragment>
+</Wix>
