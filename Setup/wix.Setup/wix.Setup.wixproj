@@ -26,7 +26,6 @@
     <Compile Include="LaunchCondition.wxs" />
     <Compile Include="ModulesComponent.wxs" />
     <Compile Include="Product.wxs" />
-    <Compile Include="RemoveComponent.wxs" />
     <Compile Include="RoundtripComponent.wxs" />
     <Compile Include="ShortcutsComponent.wxs" />
     <Compile Include="UI.wxs" />

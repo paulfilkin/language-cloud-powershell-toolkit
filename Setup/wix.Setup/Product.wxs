@@ -19,6 +19,11 @@
 		<Property Id="ARPPRODUCTICON" Value="Trados_LC_Toolkit.ico" />
 
 		<Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+		<SetProperty Id="INSTALLDIR"
+					 Value="[PersonalFolder]PowerShell"
+					 Before="CostFinalize"
+					 Sequence="first"/>
+		
 		<UIRef Id="WixUI_MyInstallDir" />
 
 		<FeatureGroupRef Id="ToolkitFeatures" />

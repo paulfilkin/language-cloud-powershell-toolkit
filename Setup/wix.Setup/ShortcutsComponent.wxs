@@ -3,43 +3,42 @@
 	<Fragment>
 		<!-- Define the Program Menu Directory Reference -->
 		<DirectoryRef Id="ApplicationProgramsFolder">
+				<!-- 64-bit PowerShell 7 Start Menu Shortcut -->
+				<Component Id="PowerShell64StartMenuShortcut" Guid="d737ba68-9e7b-41d2-badb-589b78a3378a">
+					<!-- Only create this if 64-bit PowerShell 7 is installed -->
+					<Condition><![CDATA[Installed OR POWERSHELL7_64_PATH]]></Condition>
 
-			<!-- 64-bit PowerShell 7 Start Menu Shortcut -->
-			<Component Id="PowerShell64StartMenuShortcut" Guid="2CBB655B-448C-49F1-A682-65635BF62872">
-				<!-- Only create this if 64-bit PowerShell 7 is installed -->
-				<Condition><![CDATA[POWERSHELL7_64_PATH]]></Condition>
-				<Shortcut Id="StartPowerShell64StartMenuShortcut"
-						  Name="Language Cloud PowerShell Toolkit"
-						  Directory="ApplicationProgramsFolder"
-						  Target="[ProgramFiles64Folder]PowerShell\7\pwsh.exe"
-						  WorkingDirectory="INSTALLDIR"
-						  Arguments="-NoExit -ExecutionPolicy Bypass"
-						  Icon="Trados_LC_Toolkit.ico" />
+					<Shortcut Id="StartPowerShell64StartMenuShortcut"
+							  Name="Language Cloud PowerShell Toolkit"
+							  Directory="ApplicationProgramsFolder"
+							  Target="[ProgramFiles64Folder]PowerShell\7\pwsh.exe"
+							  WorkingDirectory="INSTALLDIR"
+							  Arguments="-NoExit -ExecutionPolicy Bypass"
+							  Icon="Trados_LC_Toolkit.ico" />
 
-				<!-- Remove the folder when uninstalled, will only work if no other files are in the folder -->
-				<RemoveFolder Id="RemoveStartMenuShortcuts" On="uninstall" />
+					<!-- Remove the folder when uninstalled, will only work if no other files are in the folder -->
+					<RemoveFolder Id="RemoveStartMenuShortcuts" On="uninstall"/>
 
-				<!-- Add registry value for tracking the shortcut -->
-				<RegistryValue Root="HKCU" Key="Software\Language Cloud PowerShell Toolkit" Name="PowerShell64ShortcutCreated" Type="integer" Value="1" KeyPath="yes" />
-			</Component>
+					<!-- Add registry value for tracking the shortcut -->
+					<RegistryValue Root="HKCU" Key="Software\Language Cloud PowerShell Toolkit" Name="PowerShell64ShortcutCreated" Type="integer" Value="1" KeyPath="yes" />
+				</Component>
 
+				<!-- 32-bit PowerShell 7 Start Menu Shortcut -->
+				<Component Id="PowerShell32StartMenuShortcut" Guid="0bc56b54-3763-4718-8a53-c2d1f88b5ab4">
+					<!-- Only create this if 32-bit PowerShell 7 is installed -->
+					<Condition><![CDATA[POWERSHELL7_32_PATH]]></Condition>
 
-			<!-- 32-bit PowerShell 7 Start Menu Shortcut -->
-			<Component Id="PowerShell32StartMenuShortcut" Guid="3D456E4A-7890-45F4-A4D5-F5F3D5476C5A">
-				<!-- Only create this if 32-bit PowerShell 7 is installed -->
-				<Condition><![CDATA[POWERSHELL7_32_PATH]]></Condition>
-				<Shortcut Id="StartPowerShell32StartMenuShortcut"
-						  Name="Language Cloud PowerShell Toolkit (x86)"
-						  Directory="ApplicationProgramsFolder"
-						  Target="[ProgramFilesFolder]PowerShell\7\pwsh.exe"
-						  WorkingDirectory="INSTALLDIR"
-						  Arguments="-NoExit -ExecutionPolicy Bypass"
-						  Icon="Trados_LC_Toolkit.ico" />
+					<Shortcut Id="StartPowerShell32StartMenuShortcut"
+							  Name="Language Cloud PowerShell Toolkit (x86)"
+							  Directory="ApplicationProgramsFolder"
+							  Target="[ProgramFilesFolder]PowerShell\7\pwsh.exe"
+							  WorkingDirectory="INSTALLDIR"
+							  Arguments="-NoExit -ExecutionPolicy Bypass"
+							  Icon="Trados_LC_Toolkit.ico" />
 
-				<!-- Add registry value for tracking the shortcut -->
-				<RegistryValue Root="HKCU" Key="Software\Language Cloud PowerShell Toolkit" Name="PowerShell32ShortcutCreated" Type="integer" Value="1" KeyPath="yes" />
-			</Component>
-
+					<!-- Add registry value for tracking the shortcut -->
+					<RegistryValue Root="HKCU" Key="Software\Language Cloud PowerShell Toolkit" Name="PowerShell32ShortcutCreated" Type="integer" Value="1" KeyPath="yes" />
+				</Component>
 		</DirectoryRef>
 	</Fragment>
 
@@ -47,9 +46,9 @@
 		<DirectoryRef Id="DesktopFolder">
 
 			<!-- 64-bit PowerShell 7 Desktop Shortcut -->
-			<Component Id="PowerShell64DesktopShortcut" Guid="A1234567-1234-1234-1234-1234567890AB">
+			<Component Id="PowerShell64DesktopShortcut" Guid="ae056472-b521-41a1-9cf5-e382c4889794">
 				<!-- Only create this if 64-bit PowerShell 7 is installed -->
-				<Condition><![CDATA[POWERSHELL7_64_PATH]]></Condition>
+				<Condition><![CDATA[Installed OR POWERSHELL7_64_PATH]]></Condition>
 
 				<Shortcut Id="StartPowerShell64DesktopShortcut"
 						  Name="Language Cloud PowerShell Toolkit"
@@ -60,13 +59,15 @@
 						  Icon="Trados_LC_Toolkit.ico" />
 
 				<!-- Remove the folder when uninstalled, will only work if no other files are in the folder -->
-				<RemoveFolder Id="RemoveDesktopShortcuts" On="uninstall"/>
-				<RegistryValue Root="HKCU" Key="Software\Language Cloud PowerShell Toolkit" Name="PowerShell64ShortcutCreated" Type="integer" Value="1" KeyPath="yes" />
+				<!--<RemoveFolder Id="RemoveDesktopFolder" On="uninstall"/>-->
+				<RemoveFolder Id="RemoveApplicationProgramFolder" Directory="ApplicationProgramsFolder" On="uninstall"/> <!-- Change this later -->
+				<RegistryValue Root="HKCU" Key="Software\Language Cloud PowerShell Toolkit" Name="PowerShell64StartMenuShortcutCreated" Type="integer" Value="1" KeyPath="yes" />
 			</Component>
 
 			<!-- 32-bit PowerShell 7 Desktop Shortcut -->
-			<Component Id="PowerShell32DesktopShortcut" Guid="B2345678-2345-2345-2345-2345678901CD">
-				<!-- Only create this if 32-bit PowerShell 7 is installed -->
+			<Component Id="PowerShell32DesktopShortcut" Guid="9c8559cb-e1cb-473b-bc9b-7e13e3339c05">
+				 
+				 <!--Only create this if 32-bit PowerShell 7 is installed--> 
 				<Condition><![CDATA[POWERSHELL7_32_PATH]]></Condition>
 
 				<Shortcut Id="StartPowerShell32DesktopShortcut"
@@ -77,7 +78,7 @@
 						  Arguments="-NoExit -ExecutionPolicy Bypass"
 						  Icon="Trados_LC_Toolkit.ico" />
 
-				<RegistryValue Root="HKCU" Key="Software\Language Cloud PowerShell Toolkit" Name="PowerShell32ShortcutCreated" Type="integer" Value="1" KeyPath="yes" />
+				<RegistryValue Root="HKCU" Key="Software\Language Cloud PowerShell Toolkit" Name="PowerShell32StartMenuShortcutCreated" Type="integer" Value="1" KeyPath="yes" />
 			</Component>
 
 		</DirectoryRef>

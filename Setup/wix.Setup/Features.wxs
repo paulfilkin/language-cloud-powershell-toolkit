@@ -2,37 +2,39 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
 	<Fragment>
 		<FeatureGroup Id="ToolkitFeatures">
-			<Feature Id="DocumentationFeature" Title="Language Cloud PowerShell Toolkit Documentation" Level="1" Absent="disallow">
+			<Feature Id="DocumentationFeature" Level="1" Absent="disallow">
 				<ComponentRef Id="README" />
 			</Feature>
-			<Feature Id="EnvironmentSetFeature" Title="Language Cloud PowerShell Toolkit Environment Set" Level="1" Absent="disallow">
+			<Feature Id="EnvironmentSetFeature" Level="1" Absent="disallow">
 				<ComponentRef Id="AddPSModulePath" />
 			</Feature>
-			<Feature Id="InstallerLaunchCondition" Title="Language Cloud PowerShell Toolkit Launch Condition" Level="1" Absent="disallow">
+			<Feature Id="InstallerLaunchCondition" Level="1" Absent="disallow">
 				<ComponentGroupRef Id="LaunchConditions" />
 			</Feature>
-			<Feature Id="ModulesFeature" Title="Language Cloud PowerShell Toolkit Modules" Level="1" Absent="disallow">
+			<Feature Id="ModulesFeature" Level="1" Absent="disallow">
 				<ComponentGroupRef Id="ModulesComponentGroup" />
 			</Feature>
-			<Feature Id="RemoveFolderFeature" Title="Language Cloud PowerShell Toolkit Remove Folders" Level="1" Absent="disallow">
-				<ComponentRef Id="c_RemoveUsersFolders" />
-			</Feature>
-			<Feature Id="RoundtripComponent" Title="Language Cloud PowerShell Toolkit Roundtrip Feature" Level="1" Absent="disallow">
+			<Feature Id="RoundtripComponent" Level="1" Absent="disallow">
 				<ComponentRef Id="c_Sample_Roundtrip.ps1" />
 			</Feature>
-			<Feature Id="f_PowerShell64StartMenuShortcut" Title="Language Cloud PowerShell Toolkit 64 Start Menu Shortcut" Level="1" Absent="disallow">
+			<Feature Id="f_PowerShell64StartMenuShortcut" Level="1" Absent="disallow">
 				<ComponentRef Id="PowerShell64StartMenuShortcut" />
 			</Feature>
-			<Feature Id="f_PowerShell32StartMenuShortcut" Title="Language Cloud PowerShell Toolkit 32 Start Menu Shortcut" Level="1" Absent="disallow">
+			<Feature Id="f_PowerShell32StartMenuShortcut" Level="1" Absent="disallow">
 				<ComponentRef Id="PowerShell32StartMenuShortcut" />
 			</Feature>
-			<Feature Id="f_PowerShell64DesktopShortcut" Title="Language Cloud PowerShell Toolkit 64 Desktop Shortcut" Level="1" Absent="disallow">
+			<Feature Id="f_PowerShell64DesktopShortcut" Level="1">
 				<ComponentRef Id="PowerShell64DesktopShortcut" />
 			</Feature>
-			<Feature Id="f_PowerShell32DesktopShortcut" Title="Language Cloud PowerShell Toolkit 32 Desktop Shortcut" Level="1" Absent="disallow">
+			<Feature Id="f_PowerShell32DesktopShortcut" Level="1" Absent="disallow">
 				<ComponentRef Id="PowerShell32DesktopShortcut" />
 			</Feature>
-
+			<Feature Id="f_RemoveInstallDIR" Level="1">
+				<ComponentRef Id="c_RemoveINSTALLDIR"/>
+			</Feature>
+			<Feature Id="f_ModulesFolder" Level="1">
+				<ComponentRef Id="c_RemoveModulesFolder"/>
+			</Feature>
 		</FeatureGroup>
 	</Fragment>
 </Wix>

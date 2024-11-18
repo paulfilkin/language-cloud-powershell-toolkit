@@ -5,52 +5,42 @@
 			
 			<!-- AuthenticationHelper -->
 			<Component Id="c_AuthenticationHelper.psd1" Directory="AuthenticationHelper" Guid="b7897957-770d-4ad7-814f-f92799ee548d">
-				<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit\Modules\AuthenticationHelper" Name="Installed" Type="integer" Value="1" Action="write" />
 				<File Source="..\..\Modules\AuthenticationHelper\AuthenticationHelper.psd1"/>
 			</Component>
 			<Component Id="c_AuthenticationHelper.psm1" Directory="AuthenticationHelper" Guid="2d151b5b-9b4d-4c27-8864-c81ec354814b">
-				<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit\Modules\AuthenticationHelper" Name="Installed" Type="integer" Value="1" Action="write" />
 				<File Source="..\..\Modules\AuthenticationHelper\AuthenticationHelper.psm1"/>
 			</Component>
 			
 			<!-- ProjectHelper -->
 			<Component Id="c_ProjectHelper.psd1" Directory="ProjectHelper" Guid="25342b70-6442-42e4-a361-cea55a1fe301">
-				<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit\Modules\ProjectHelper" Name="Installed" Type="integer" Value="1" Action="write" />
 				<File Source="..\..\Modules\ProjectHelper\ProjectHelper.psd1"/>
 			</Component>
 			<Component Id="c_ProjectHelper.psm1" Directory="ProjectHelper" Guid="392ab9c6-96db-47e9-9e16-a1a1c4e7e173">
-				<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit\Modules\ProjectHelper" Name="Installed" Type="integer" Value="1" Action="write" />
 				<File Source="..\..\Modules\ProjectHelper\ProjectHelper.psm1"/>
 			</Component>
 
 			<!-- ResourcesHelper -->
 			<Component Id="c_ResourcesHelper.psd1" Directory="ResourcesHelper" Guid="631cbc2f-f94c-48e7-9a7c-0cf8f48c921a">
-				<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit\Modules\ResourcesHelper" Name="Installed" Type="integer" Value="1" Action="write" />
 				<File Source="..\..\Modules\ResourcesHelper\ResourcesHelper.psd1"/>
 			</Component>
 			<Component Id="c_ResourcesHelper.psm1" Directory="ResourcesHelper" Guid="52bc55e5-e2f6-412f-9eb9-210324a1b9f6">
-				<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit\Modules\ResourcesHelper" Name="Installed" Type="integer" Value="1" Action="write" />
 				<File Source="..\..\Modules\ResourcesHelper\ResourcesHelper.psm1"/>
 			</Component>
 
 			<!-- TerminologyHelper -->
 			<Component Id="c_TerminologyHelper.psd1" Directory="TerminologyHelper" Guid="1ad78143-4f2a-4cfc-a8cf-661e28e43acd">
-				<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit\Modules\TerminologyHelper" Name="Installed" Type="integer" Value="1" Action="write" />
 				<File Source="..\..\Modules\TerminologyHelper\TerminologyHelper.psd1"/>
 			</Component>
 			<Component Id="c_TerminologyHelper.psm1" Directory="TerminologyHelper" Guid="d22a60c1-bdee-4882-aa2a-1e27e571f0ff">
-				<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit\Modules\TerminologyHelper" Name="Installed" Type="integer" Value="1" Action="write" />
 				<File Source="..\..\Modules\TerminologyHelper\TerminologyHelper.psm1"/>
 			</Component>
 
 
 			<!-- UsersHelper -->
 			<Component Id="c_UsersHelper.psd1" Directory="UsersHelper" Guid="6351824f-865c-4a3c-82ba-5852ff701c4d">
-				<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit\Modules\UsersHelper" Name="Installed" Type="integer" Value="1" Action="write" />
 				<File Source="..\..\Modules\UsersHelper\UsersHelper.psd1"/>
 			</Component>
 			<Component Id="c_UsersHelper.psm1" Directory="TerminologyHelper" Guid="2cb90c41-681f-4f44-93d3-4105e9f8057d">
-				<RegistryValue KeyPath="yes" Root="HKCU" Key="SOFTWARE\Language Cloud PowerShell Toolkit\Modules\UsersHelper" Name="Installed" Type="integer" Value="1" Action="write" />
 				<File Source="..\..\Modules\UsersHelper\UsersHelper.psm1"/>
 			</Component>
 		</ComponentGroup>

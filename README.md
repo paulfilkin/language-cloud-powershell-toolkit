@@ -44,7 +44,7 @@ For a quicker and more streamlined installation, you can use the MSI installer. 
 3. **Verify Installation**
     - After the installation is complete, verify that the toolkit has been correctly installed by checking the installation path.
 
-### **2. Manual Instalation**
+### **2. Manual Installation**
 If you prefer to manually install the toolkit, follow these steps:
 
 1. Download the Files
