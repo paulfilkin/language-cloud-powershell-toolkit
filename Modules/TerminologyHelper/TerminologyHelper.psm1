@@ -1352,6 +1352,422 @@ function ConvertTo-TermbaseStructure
     }
 }
 
+#region Termbase Entry Operations
+
+<#
+.SYNOPSIS
+    Creates a new entry in a termbase.
+
+.DESCRIPTION
+    The `New-TermbaseEntry` function creates a new terminology entry in the specified termbase. 
+    Each entry contains one or more languages, each with one or more terms. Field values can be 
+    set at entry, language, and term level.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER termbaseId
+    (Mandatory) The identifier of the termbase to create the entry in.
+
+.PARAMETER entry
+    (Mandatory) A hashtable representing the entry. Should contain:
+    - humanReadableId (optional string) - an external cross-reference identifier
+    - languages (required array) - each with:
+      - language: @{ languageCode = "en-US" }
+      - terms: array of @{ text = "term text"; systemStatus = "preferred" }
+      - termbaseFieldValues (optional): array of field value hashtables
+    - termbaseFieldValues (optional) - entry-level field values
+
+.PARAMETER fields
+    (Optional) A comma-separated list of fields to include in the response.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    $entry = @{
+        languages = @(
+            @{
+                language = @{ languageCode = "en-US" }
+                terms = @(
+                    @{ text = "computer"; systemStatus = "preferred" }
+                )
+            },
+            @{
+                language = @{ languageCode = "de-DE" }
+                terms = @(
+                    @{ text = "Computer"; systemStatus = "preferred" }
+                )
+            }
+        )
+    }
+    New-TermbaseEntry -accessKey $accessKey -termbaseId "tb-123" -entry $entry
+#>
+function New-TermbaseEntry
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $termbaseId,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable] $entry,
+
+        [string] $fields
+    )
+
+    $uri = "$(Get-LCBaseUri)/termbases/$termbaseId/entries"
+    if ($fields)
+    {
+        $uri += "?fields=$fields"
+    }
+
+    $headers = Get-RequestHeader -accessKey $accessKey
+    $json = $entry | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+    Lists entries in a termbase.
+
+.DESCRIPTION
+    The `Get-AllTermbaseEntries` function retrieves a paginated list of entries from the 
+    specified termbase. Supports filtering by humanReadableIds and field selection.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER termbaseId
+    (Mandatory) The identifier of the termbase.
+
+.PARAMETER fields
+    (Optional) A comma-separated list of fields to include in the response.
+
+.PARAMETER humanReadableIds
+    (Optional) An array of humanReadableId values to filter entries by.
+
+.PARAMETER skip
+    (Optional) The number of items to skip for pagination. Default is 0.
+
+.PARAMETER top
+    (Optional) The number of items to return per page. Range 1-100, default is 100.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllTermbaseEntries -accessKey $accessKey -termbaseId "tb-123"
+
+.EXAMPLE
+    # Filter by humanReadableIds
+    Get-AllTermbaseEntries -accessKey $accessKey -termbaseId "tb-123" `
+        -humanReadableIds @("ext-001", "ext-002")
+
+.EXAMPLE
+    # Paginate
+    Get-AllTermbaseEntries -accessKey $accessKey -termbaseId "tb-123" -skip 0 -top 50
+#>
+function Get-AllTermbaseEntries
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $termbaseId,
+
+        [string] $fields,
+        [string[]] $humanReadableIds,
+        [int] $skip,
+        [int] $top
+    )
+
+    $uri = "$(Get-LCBaseUri)/termbases/$termbaseId/entries"
+    $queryParts = @()
+
+    if ($fields)           { $queryParts += "fields=$fields" }
+    if ($humanReadableIds) { foreach ($hrid in $humanReadableIds) { $queryParts += "humanReadableIds=$hrid" } }
+    if ($PSBoundParameters.ContainsKey('skip')) { $queryParts += "skip=$skip" }
+    if ($PSBoundParameters.ContainsKey('top'))  { $queryParts += "top=$top" }
+
+    if ($queryParts.Count -gt 0)
+    {
+        $uri += "?" + ($queryParts -join "&")
+    }
+
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
+}
+
+<#
+.SYNOPSIS
+    Deletes all entries from a termbase.
+
+.DESCRIPTION
+    The `Remove-AllTermbaseEntries` function deletes every entry in the specified termbase. 
+    This is a destructive bulk operation and cannot be undone.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER termbaseId
+    (Mandatory) The identifier of the termbase whose entries should be deleted.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-AllTermbaseEntries -accessKey $accessKey -termbaseId "tb-123"
+#>
+function Remove-AllTermbaseEntries
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $termbaseId
+    )
+
+    $uri = "$(Get-LCBaseUri)/termbases/$termbaseId/entries"
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Delete }
+}
+
+<#
+.SYNOPSIS
+    Retrieves a specific termbase entry by ID.
+
+.DESCRIPTION
+    The `Get-TermbaseEntry` function retrieves the full details of a single entry in the 
+    specified termbase, including all languages, terms, and field values.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER termbaseId
+    (Mandatory) The identifier of the termbase.
+
+.PARAMETER entryId
+    (Mandatory) The identifier of the entry to retrieve.
+
+.PARAMETER fields
+    (Optional) A comma-separated list of fields to include in the response.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-TermbaseEntry -accessKey $accessKey -termbaseId "tb-123" -entryId "entry-456"
+
+.EXAMPLE
+    # Retrieve specific fields
+    Get-TermbaseEntry -accessKey $accessKey -termbaseId "tb-123" -entryId "entry-456" `
+        -fields "id,languages,termbaseFieldValues"
+#>
+function Get-TermbaseEntry
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $termbaseId,
+
+        [Parameter(Mandatory=$true)]
+        [string] $entryId,
+
+        [string] $fields
+    )
+
+    $uri = "$(Get-LCBaseUri)/termbases/$termbaseId/entries/$entryId"
+    if ($fields)
+    {
+        $uri += "?fields=$fields"
+    }
+
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
+}
+
+<#
+.SYNOPSIS
+    Updates an existing termbase entry.
+
+.DESCRIPTION
+    The `Update-TermbaseEntry` function replaces an existing entry with the provided data. 
+    The entry body should include all languages and terms, using their IDs for existing items. 
+    Omitting an existing language or term will remove it.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER termbaseId
+    (Mandatory) The identifier of the termbase.
+
+.PARAMETER entryId
+    (Mandatory) The identifier of the entry to update.
+
+.PARAMETER entry
+    (Mandatory) A hashtable representing the updated entry. Same structure as New-TermbaseEntry 
+    but with IDs for existing languages, terms, and field values.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    $entry = @{
+        languages = @(
+            @{
+                id = "lang-abc"
+                language = @{ languageCode = "en-US" }
+                terms = @(
+                    @{ id = "term-xyz"; text = "updated term"; systemStatus = "preferred" }
+                )
+            }
+        )
+    }
+    Update-TermbaseEntry -accessKey $accessKey -termbaseId "tb-123" -entryId "entry-456" -entry $entry
+#>
+function Update-TermbaseEntry
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $termbaseId,
+
+        [Parameter(Mandatory=$true)]
+        [string] $entryId,
+
+        [Parameter(Mandatory=$true)]
+        [hashtable] $entry
+    )
+
+    $uri = "$(Get-LCBaseUri)/termbases/$termbaseId/entries/$entryId"
+    $headers = Get-RequestHeader -accessKey $accessKey
+    $json = $entry | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+}
+
+<#
+.SYNOPSIS
+    Deletes a single termbase entry.
+
+.DESCRIPTION
+    The `Remove-TermbaseEntry` function deletes a specific entry from the termbase.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER termbaseId
+    (Mandatory) The identifier of the termbase.
+
+.PARAMETER entryId
+    (Mandatory) The identifier of the entry to delete.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-TermbaseEntry -accessKey $accessKey -termbaseId "tb-123" -entryId "entry-456"
+#>
+function Remove-TermbaseEntry
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $termbaseId,
+
+        [Parameter(Mandatory=$true)]
+        [string] $entryId
+    )
+
+    $uri = "$(Get-LCBaseUri)/termbases/$termbaseId/entries/$entryId"
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Delete }
+}
+
+<#
+.SYNOPSIS
+    Searches for terms in a termbase by source language.
+
+.DESCRIPTION
+    The `Search-TermbaseTerms` function lists or searches terms in a termbase for a given source 
+    language. Supports normal (exact), linguistic (stemming-based), and fuzzy search types. 
+    Optionally filter by target language.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER termbaseId
+    (Mandatory) The identifier of the termbase.
+
+.PARAMETER sourceLanguageCode
+    (Mandatory) The source language code to list terms for (e.g. "en-US").
+
+.PARAMETER search
+    (Optional) The text to search for. Maximum 100 characters.
+
+.PARAMETER searchType
+    (Optional) The type of search to perform. Allowed values: normal (default), linguistic, fuzzy.
+
+.PARAMETER targetLanguageCode
+    (Optional) A target language code to filter results by.
+
+.PARAMETER skip
+    (Optional) The number of items to skip for pagination. Default is 0.
+
+.PARAMETER top
+    (Optional) The number of items to return per page. Range 1-100, default is 100.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Search-TermbaseTerms -accessKey $accessKey -termbaseId "tb-123" -sourceLanguageCode "en-US"
+
+.EXAMPLE
+    # Fuzzy search for a term with target language filter
+    Search-TermbaseTerms -accessKey $accessKey -termbaseId "tb-123" -sourceLanguageCode "en-US" `
+        -search "computr" -searchType "fuzzy" -targetLanguageCode "de-DE"
+
+.EXAMPLE
+    # Linguistic search with pagination
+    Search-TermbaseTerms -accessKey $accessKey -termbaseId "tb-123" -sourceLanguageCode "en-US" `
+        -search "running" -searchType "linguistic" -skip 0 -top 50
+#>
+function Search-TermbaseTerms
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $termbaseId,
+
+        [Parameter(Mandatory=$true)]
+        [string] $sourceLanguageCode,
+
+        [string] $search,
+        [string] $searchType,
+        [string] $targetLanguageCode,
+        [int] $skip,
+        [int] $top
+    )
+
+    $uri = "$(Get-LCBaseUri)/termbases/$termbaseId/terms/$sourceLanguageCode"
+    $queryParts = @()
+
+    if ($search)             { $queryParts += "search=$search" }
+    if ($searchType)         { $queryParts += "searchType=$searchType" }
+    if ($targetLanguageCode) { $queryParts += "targetLanguageCode=$targetLanguageCode" }
+    if ($PSBoundParameters.ContainsKey('skip')) { $queryParts += "skip=$skip" }
+    if ($PSBoundParameters.ContainsKey('top'))  { $queryParts += "top=$top" }
+
+    if ($queryParts.Count -gt 0)
+    {
+        $uri += "?" + ($queryParts -join "&")
+    }
+
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
+}
+
+#endregion
+
 Export-ModuleMember Get-AllTermbases;
 Export-ModuleMember Get-Termbase;
 Export-ModuleMember New-Termbase;
@@ -1365,3 +1781,10 @@ Export-ModuleMember Remove-TermbaseTemplate;
 Export-ModuleMember New-TermbaseTemplate;
 Export-ModuleMember Update-TermbaseTemplate;
 Export-ModuleMember Get-Field;
+Export-ModuleMember New-TermbaseEntry;
+Export-ModuleMember Get-AllTermbaseEntries;
+Export-ModuleMember Remove-AllTermbaseEntries;
+Export-ModuleMember Get-TermbaseEntry;
+Export-ModuleMember Update-TermbaseEntry;
+Export-ModuleMember Remove-TermbaseEntry;
+Export-ModuleMember Search-TermbaseTerms;

@@ -3,7 +3,7 @@
     ModuleToProcess = 'TerminologyHelper.psm1'
     
     # Version number of this module.
-    ModuleVersion = '1.0.0.0'
+    ModuleVersion = '1.1.0.0'
     
     # ID used to uniquely identify this module
     GUID = '{F3A7B2C1-D8E4-4F56-9A0B-1C2D3E4F5A6B}'
@@ -18,7 +18,7 @@
     Copyright = '© 2011 - 2022 SDL Limited as part of the RWS Holdings Plc group of companies (\"RWS Group\").'
     
     # Description of the functionality provided by this module
-    Description = 'A PowerShell module to manage terminology resources in the Language Cloud'
+    Description = 'A PowerShell module to manage terminology resources in Language Cloud. Includes termbase and template CRUD, import/export, and termbase entry operations (create, list, get, update, delete, search).'
     
     # Minimum version of the Windows PowerShell engine required by this module
     PowerShellVersion = '7.4'
