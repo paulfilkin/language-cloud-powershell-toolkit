@@ -4378,6 +4378,145 @@ function Get-ZipFileStatus
 
 #endregion
 
+#region Translation Engine Updates
+
+<#
+.SYNOPSIS
+    Updates a translation engine's name, description, and/or definition.
+
+.DESCRIPTION
+    The `Update-TranslationEngine` function updates an existing translation engine by replacing 
+    its name, description, and definition. The definition includes language pair definitions 
+    (with resources and adjacent language pairs), the resource sequence (TM, TB, MT, LLM ordering), 
+    and the adjacent language penalty.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER translationEngineId
+    (Mandatory) The unique identifier of the translation engine to update.
+
+.PARAMETER name
+    (Optional) The new name for the translation engine.
+
+.PARAMETER description
+    (Optional) The new description for the translation engine.
+
+.PARAMETER definition
+    (Optional) A hashtable representing the translation engine definition. This should include:
+    - languageProcessingRuleId (string)
+    - languagePairDefinitions (array of hashtables with languagePair, resources, adjacentLanguagePairs)
+    - sequence (hashtable with tm, tb, mt, llm arrays of resource IDs)
+    - adjacentLanguagePenalty (integer, 0-30)
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-TranslationEngine -accessKey $accessKey -translationEngineId "engine-123" `
+        -name "Updated Engine Name" -description "New description"
+
+.EXAMPLE
+    # Update the full definition including resource sequence
+    $definition = @{
+        languageProcessingRuleId = "rule-abc"
+        languagePairDefinitions = @(
+            @{
+                languagePair = @{ source = "en-US"; target = "de-DE" }
+                resources = @(
+                    @{
+                        id = "tm-123"; type = "TM"; penalty = 0
+                        lookup = $true; concordance = $true; update = $true
+                        generativeTranslation = $false; smartReview = $false
+                    }
+                )
+                adjacentLanguagePairs = @()
+            }
+        )
+        sequence = @{
+            tm = @("tm-123")
+            tb = @("tb-456")
+            mt = @("mt-789")
+            llm = @()
+        }
+        adjacentLanguagePenalty = 0
+    }
+    Update-TranslationEngine -accessKey $accessKey -translationEngineId "engine-123" `
+        -name "My Engine" -definition $definition
+#>
+function Update-TranslationEngine
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $translationEngineId,
+
+        [string] $name,
+        [string] $description,
+        [hashtable] $definition
+    )
+
+    $uri = "$(Get-LCBaseUri)/translation-engines/$translationEngineId"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{}
+    if ($name)       { $body.name = $name }
+    if ($description){ $body.description = $description }
+    if ($definition) { $body.definition = $definition }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+}
+
+#endregion
+
+#region Connected AI
+
+<#
+.SYNOPSIS
+    Retrieves all LLM configurations for the account.
+
+.DESCRIPTION
+    The `Get-AllLlmConfigurations` function lists all Large Language Model configurations 
+    available in the tenant. Each configuration includes the provider type (azureOpenAI or 
+    awsBedrock), model name, and whether it is the default or active configuration.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER fields
+    (Optional) A comma-separated list of fields to include in the response. When omitted, 
+    default fields are returned.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllLlmConfigurations -accessKey $accessKey
+
+.EXAMPLE
+    # Retrieve specific fields only
+    Get-AllLlmConfigurations -accessKey $accessKey -fields "id,model,type,isDefault,isActive"
+#>
+function Get-AllLlmConfigurations
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $fields
+    )
+
+    $uri = "$(Get-LCBaseUri)/connected-ai/llm-configurations"
+    if ($fields)
+    {
+        $uri += "?fields=$fields"
+    }
+
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
+}
+
+#endregion
+
 Export-ModuleMember Get-AllProjectTemplates;
 Export-ModuleMember Get-ProjectTemplate;
 Export-ModuleMember New-ProjectTemplate;
@@ -4429,3 +4568,5 @@ Export-ModuleMember Request-FileAnalysis;
 Export-ModuleMember Get-FileAnalysisStatus;
 Export-ModuleMember Send-ZipFile;
 Export-ModuleMember Get-ZipFileStatus;
+Export-ModuleMember Update-TranslationEngine;
+Export-ModuleMember Get-AllLlmConfigurations;
