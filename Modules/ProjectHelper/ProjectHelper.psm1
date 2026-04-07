@@ -850,6 +850,241 @@ function Get-ProjectCreationRequest
     }
 }
 
+#region Export Project Files
+
+<#
+.SYNOPSIS
+    Triggers an export of project target files as a ZIP archive.
+
+.DESCRIPTION
+    The `Export-ProjectFiles` function initiates an export of target files from a project. You can 
+    optionally include reference files, filter by target languages, and choose which file versions 
+    to include. Returns an export ID to poll with Get-ProjectFilesExportStatus.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER projectId
+    (Mandatory) The ID of the project to export files from.
+
+.PARAMETER includeReferenceFiles
+    (Optional) Whether to include reference files in the export. Default is $false.
+
+.PARAMETER includeVersions
+    (Optional) Which target file versions to include. Default is "currentVersion".
+
+.PARAMETER targetLanguages
+    (Optional) An array of target language codes to filter the export (e.g. @("de-DE", "fr-FR")). 
+    If not specified, all target languages are included.
+
+.PARAMETER downloadFlat
+    (Optional) Whether to flatten the folder structure in the ZIP. Default is $false.
+
+.EXAMPLE
+    # Example 1: Export all target files
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    $export = Export-ProjectFiles -accessKey $accessKey -projectId "project-123"
+
+.EXAMPLE
+    # Example 2: Export specific languages with reference files
+    $export = Export-ProjectFiles -accessKey $accessKey -projectId "project-123" `
+        -includeReferenceFiles $true -targetLanguages @("de-DE", "fr-FR")
+    # Then poll: Get-ProjectFilesExportStatus -accessKey $accessKey -projectId "project-123" -exportId $export.exportId
+    # Then download: Save-ProjectFiles -accessKey $accessKey -projectId "project-123" -exportId $export.exportId -outputPath "C:\exports\files.zip"
+#>
+function Export-ProjectFiles
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $projectId,
+
+        [bool] $includeReferenceFiles = $false,
+        [string] $includeVersions = "currentVersion",
+        [string[]] $targetLanguages,
+        [bool] $downloadFlat = $false
+    )
+
+    $uri = "$(Get-LCBaseUri)/projects/$projectId/files/exports"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        referenceFiles = @{
+            include = $includeReferenceFiles
+        }
+        targetFiles = [ordered]@{
+            includeVersions = $includeVersions
+            downloadFlat    = $downloadFlat
+        }
+    }
+
+    if ($targetLanguages)
+    {
+        $body.targetFiles.targetLanguages = @($targetLanguages)
+    }
+
+    $json = $body | ConvertTo-Json -Depth 5
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+    Polls the status of a project files export operation.
+
+.DESCRIPTION
+    The `Get-ProjectFilesExportStatus` function checks the status of a previously requested file 
+    export. When the state is "completed", use Save-ProjectFiles to download the ZIP.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER projectId
+    (Mandatory) The ID of the project.
+
+.PARAMETER exportId
+    (Mandatory) The export ID returned by Export-ProjectFiles.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-ProjectFilesExportStatus -accessKey $accessKey -projectId "project-123" -exportId "export-456"
+#>
+function Get-ProjectFilesExportStatus
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $projectId,
+
+        [Parameter(Mandatory=$true)]
+        [string] $exportId
+    )
+
+    $uri = "$(Get-LCBaseUri)/projects/$projectId/files/exports/$exportId"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
+}
+
+<#
+.SYNOPSIS
+    Downloads exported project files as a ZIP archive.
+
+.DESCRIPTION
+    The `Save-ProjectFiles` function downloads the ZIP file produced by a completed export operation. 
+    Poll with Get-ProjectFilesExportStatus until the state is "completed" before calling this function.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER projectId
+    (Mandatory) The ID of the project.
+
+.PARAMETER exportId
+    (Mandatory) The export ID returned by Export-ProjectFiles.
+
+.PARAMETER outputPath
+    (Mandatory) The local file path where the ZIP should be saved (e.g. "C:\exports\files.zip").
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Save-ProjectFiles -accessKey $accessKey -projectId "project-123" -exportId "export-456" `
+        -outputPath "C:\exports\target-files.zip"
+#>
+function Save-ProjectFiles
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $projectId,
+
+        [Parameter(Mandatory=$true)]
+        [string] $exportId,
+
+        [Parameter(Mandatory=$true)]
+        [string] $outputPath
+    )
+
+    $uri = "$(Get-LCBaseUri)/projects/$projectId/files/exports/$exportId/download"
+
+    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+    $headers.Add("X-LC-Tenant", $accessKey.tenant)
+    $headers.Add("Accept", "application/octet-stream")
+    $headers.Add("Authorization", $accessKey.token)
+
+    return Invoke-SafeMethod {
+        Invoke-RestMethod -Uri $uri -Headers $headers -OutFile $outputPath
+        Write-Host "Project files saved to $outputPath" -ForegroundColor Green
+    }
+}
+
+#endregion
+
+#region Reschedule Tasks
+
+<#
+.SYNOPSIS
+    Reschedules the deadlines for workflow tasks in a project.
+
+.DESCRIPTION
+    The `Set-TaskDeadlines` function updates the due date for one or more workflow tasks within a project.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER projectId
+    (Mandatory) The ID of the project containing the tasks.
+
+.PARAMETER dueBy
+    (Mandatory) The new deadline as an ISO 8601 datetime string (e.g. "2026-06-01T12:00:00Z").
+
+.PARAMETER taskIds
+    (Mandatory) An array of task IDs to reschedule.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Set-TaskDeadlines -accessKey $accessKey -projectId "project-123" `
+        -dueBy "2026-06-01T12:00:00Z" -taskIds @("task-1", "task-2")
+#>
+function Set-TaskDeadlines
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $projectId,
+
+        [Parameter(Mandatory=$true)]
+        [string] $dueBy,
+
+        [Parameter(Mandatory=$true)]
+        [string[]] $taskIds
+    )
+
+    $uri = "$(Get-LCBaseUri)/projects/$projectId/tasks/reschedule"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        dueBy   = $dueBy
+        taskIds = @($taskIds)
+    }
+
+    $json = $body | ConvertTo-Json -Depth 5
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Patch }
+}
+
+#endregion
+
 Export-ModuleMember New-Project;
 Export-ModuleMember Get-AllProjects;
 Export-ModuleMember Get-Project;
+Export-ModuleMember Export-ProjectFiles;
+Export-ModuleMember Get-ProjectFilesExportStatus;
+Export-ModuleMember Save-ProjectFiles;
+Export-ModuleMember Set-TaskDeadlines;
