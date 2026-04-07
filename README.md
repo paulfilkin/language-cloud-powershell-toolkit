@@ -59,6 +59,7 @@ If you prefer to manually install the toolkit, follow these steps:
     - Ensure these files are placed directly in `C:\Users\{your_user_name}\Documents\Powershell`.
 4. Copy PowerShell Modules
     -   Copy the PowerShell modules into the `Modules` folder:
+        -   `...\Powershell\Modules\CommonHelper`
         -   `...\Powershell\Modules\AuthenticationHelper`
         -   `...\Powershell\Modules\ResourcesHelper`
         -   `...\Powershell\Modules\ProjectHelper`
@@ -112,21 +113,23 @@ Before using the functions provided by the modules, you need to ensure they are 
 1. Check Module Availability
     - Use the `Get-Module` command to verify if the required modules are available in your PowerShell environment:
       ```powershell
-      Get-Module -ListAvailable -Name AuthenticationHelper, ProjectHelper, ResourcesHelper, UsersHelper
+      Get-Module -ListAvailable -Name CommonHelper, AuthenticationHelper, ProjectHelper, ResourcesHelper, UsersHelper, TerminologyHelper
       ```
     - If the modules are listed, they are available in the environment path.
 2. Import Modules from Environment Path
    -  If the modules are available in the environment path, you can import them directly by name. For example:
       ```powershell
+      Import-Module -Name CommonHelper
       Import-Module -Name AuthenticationHelper
       Import-Module -Name ProjectHelper 
       Import-Module -Name ResourcesHelper 
       Import-Module -Name UsersHelper 
-      Import-Module -Name TerminologyHelper 
+      Import-Module -Name TerminologyHelper
       ```
 3. Import Modules from Specific Path
     - If the modules are not available in the environment path, you will need to import them from their specific location. Use the full path to the module when importing. For example:
       ```powershell
+      Import-Module -Name "C:\Users\{your_user_name}\Documents\Powershell\Modules\CommonHelper"
       Import-Module -Name "C:\Users\{your_user_name}\Documents\Powershell\Modules\AuthenticationHelper"
       Import-Module -Name "C:\Users\{your_user_name}\Documents\Powershell\Modules\ProjectHelper" 
       Import-Module -Name "C:\Users\{your_user_name}\Documents\Powershell\Modules\ResourcesHelper"
@@ -171,10 +174,12 @@ The toolkit has been documented with `Get-Help` to provide detailed information 
 1. Ensure Modules Are Loaded
     - Before accessing the help documentation, make sure that the necessary modules are imported into your PowerShell 7 session. You can do this by running:
         ```powershell
+        Import-Module -Name CommonHelper
         Import-Module -Name AuthenticationHelper
         Import-Module -Name ProjectHelper
         Import-Module -Name ResourcesHelper
         Import-Module -Name UsersHelper
+        Import-Module -Name TerminologyHelper
         ```
     If modules are not in the environment path, use the full path for importing as needed.
 
@@ -242,38 +247,55 @@ This section provides detailed documentation for the functions included in the P
 | Function Name	| Description | Module |
 | ------ | --------- | ------  |
 | `Get-AccessKey`                            | Authenticates using the provided client ID, secret, and tenant ID, and returns an object containing the access token and tenant necessary for making API calls. | `AuthenticationHelper` |
-| `New-Project`                              | Creates a new project                                                      | `ProjectHelper`   |
+| `New-Project`                              | Creates a new project.                                                     | `ProjectHelper`   |
 | `Get-AllProjects`                          | Retrieves all projects.                                                    | `ProjectHelper`   |
-| `Get-Project`                              | Retrieves a specifiec project.                                             | `ProjectHelper`   |
-| `Get-AllProjectTemplates`                  | Retrieves all project templates.                                            | `ResourcesHelper` |
+| `Get-Project`                              | Retrieves a specific project.                                              | `ProjectHelper`   |
+| `Export-ProjectFiles`                      | Triggers a ZIP export of target files from a project.                      | `ProjectHelper`   |
+| `Get-ProjectFilesExportStatus`             | Polls the status of a project files export operation.                      | `ProjectHelper`   |
+| `Save-ProjectFiles`                        | Downloads exported project files as a ZIP archive.                         | `ProjectHelper`   |
+| `Set-TaskDeadlines`                        | Reschedules the deadlines for workflow tasks in a project.                 | `ProjectHelper`   |
+| `Get-Task`                                 | Retrieves a specific workflow task by ID.                                  | `ProjectHelper`   |
+| `Get-AssignedTasks`                        | Lists all tasks assigned to the authenticated user.                        | `ProjectHelper`   |
+| `Submit-AcceptTask`                        | Accepts a task, making the current user the task owner.                    | `ProjectHelper`   |
+| `Submit-RejectTask`                        | Rejects a task, returning it to the pool for other assignees.              | `ProjectHelper`   |
+| `Submit-CompleteTask`                      | Completes a task with an optional outcome and comment.                     | `ProjectHelper`   |
+| `Submit-ReleaseTask`                       | Releases a task from its current owner back to the pool.                   | `ProjectHelper`   |
+| `Submit-ReclaimTask`                       | Reclaims a task, removing the current owner.                               | `ProjectHelper`   |
+| `Set-TaskAssignment`                       | Assigns a task to one or more users or groups.                             | `ProjectHelper`   |
+| `Get-AllProjectTemplates`                  | Retrieves all project templates.                                           | `ResourcesHelper` |
 | `Get-ProjectTemplate`                      | Retrieves a specific project template.                                     | `ResourcesHelper` |
 | `New-ProjectTemplate`                      | Creates a new project template.                                            | `ResourcesHelper` |
 | `Remove-ProjectTemplate`                   | Deletes an existing project template.                                      | `ResourcesHelper` |
 | `Update-ProjectTemplate`                   | Updates an existing project template based on specified configurations.     | `ResourcesHelper` |
-| `Get-AllTranslationEngines`                | Retrieves all translation engines.                                          | `ResourcesHelper` |
+| `Get-AllTranslationEngines`                | Retrieves all translation engines.                                         | `ResourcesHelper` |
 | `Get-TranslationEngine`                    | Retrieves a specific translation engine.                                   | `ResourcesHelper` |
+| `Update-TranslationEngine`                 | Updates a translation engine's name, description, and definition.          | `ResourcesHelper` |
 | `Get-AllCustomers`                         | Retrieves all customers.                                                   | `ResourcesHelper` |
 | `Get-Customer`                             | Retrieves a specific customer.                                             | `ResourcesHelper` |
-| `New-Customer`                             | Creates a new customer.                                                   | `ResourcesHelper` |
-| `Remove-Customer`                          | Deletes an existing customer.                                             | `ResourcesHelper` |
-| `Update-Customer`                          | Updates an existing customer.                                             | `ResourcesHelper` |
+| `New-Customer`                             | Creates a new customer.                                                    | `ResourcesHelper` |
+| `Remove-Customer`                          | Deletes an existing customer.                                              | `ResourcesHelper` |
+| `Update-Customer`                          | Updates an existing customer.                                              | `ResourcesHelper` |
 | `Get-AllWorkflows`                         | Retrieves all workflows.                                                   | `ResourcesHelper` |
-| `Get-Workflow`                             | Retrieves a specific workflow.                                            | `ResourcesHelper` |
-| `Get-AllPricingModels`                     | Retrieves all pricing models.                                             | `ResourcesHelper` |
+| `Get-Workflow`                             | Retrieves a specific workflow.                                             | `ResourcesHelper` |
+| `Update-Workflow`                          | Updates a workflow's name, description, and task configurations.           | `ResourcesHelper` |
+| `Get-AllPricingModels`                     | Retrieves all pricing models.                                              | `ResourcesHelper` |
 | `Get-PricingModel`                         | Retrieves a specific pricing model.                                        | `ResourcesHelper` |
+| `New-PricingModel`                         | Creates a new pricing model.                                               | `ResourcesHelper` |
+| `Update-PricingModel`                      | Updates an existing pricing model.                                         | `ResourcesHelper` |
+| `Remove-PricingModel`                      | Deletes an existing pricing model.                                         | `ResourcesHelper` |
 | `Get-AllScheduleTemplates`                 | Retrieves all schedule templates.                                          | `ResourcesHelper` |
 | `Get-ScheduleTemplate`                     | Retrieves a specific schedule template.                                    | `ResourcesHelper` |
 | `Remove-ScheduleTemplate`                  | Deletes an existing schedule template.                                     | `ResourcesHelper` |
 | `Get-AllFileTypeConfigurations`            | Retrieves all file type configurations.                                    | `ResourcesHelper` |
-| `Get-FileTypeConfiguration`                | Retrieves a specific file type configuration.                             | `ResourcesHelper` |
+| `Get-FileTypeConfiguration`                | Retrieves a specific file type configuration.                              | `ResourcesHelper` |
 | `Get-AllLocations`                         | Retrieves all locations.                                                   | `ResourcesHelper` |
-| `Get-Location`                             | Retrieves a specific location.                                            | `ResourcesHelper` |
-| `Get-AllCustomFields`                      | Retrieves all custom fields.                                              | `ResourcesHelper` |
-| `Get-CustomField`                          | Retrieves a specific custom field.                                        | `ResourcesHelper` |
+| `Get-Location`                             | Retrieves a specific location.                                             | `ResourcesHelper` |
+| `Get-AllCustomFields`                      | Retrieves all custom fields.                                               | `ResourcesHelper` |
+| `Get-CustomField`                          | Retrieves a specific custom field.                                         | `ResourcesHelper` |
 | `Copy-TranslationMemory`                   | Copies an existing translation memory.                                     | `ResourcesHelper` |
 | `Get-AllTranslationMemories`               | Retrieves all translation memories.                                        | `ResourcesHelper` |
 | `Get-TranslationMemory`                    | Retrieves a specific translation memory.                                   | `ResourcesHelper` |
-| `New-TranslationMemory`                    | Creates a new translation memory.                                         | `ResourcesHelper` |
+| `New-TranslationMemory`                    | Creates a new translation memory.                                          | `ResourcesHelper` |
 | `Remove-TranslationMemory`                 | Deletes an existing translation memory.                                    | `ResourcesHelper` |
 | `Update-TranslationMemory`                 | Updates an existing translation memory.                                    | `ResourcesHelper` |
 | `Import-TranslationMemory`                 | Imports an existing file to an existing translation memory.                | `ResourcesHelper` |
@@ -282,25 +304,60 @@ This section provides detailed documentation for the functions included in the P
 | `Get-TranslationQualityAssessment`         | Retrieves a specific translation quality assessment.                       | `ResourcesHelper` |
 | `Get-AllLanguageProcessingRules`           | Retrieves all language processing rules.                                   | `ResourcesHelper` |
 | `Get-LanguageProcessingRule`               | Retrieves a specific language processing rule.                             | `ResourcesHelper` |
-| `Get-AllFieldTemplates`                    | Retrieves all field templates.                                            | `ResourcesHelper` |
-| `Get-FieldTemplate`                        | Retrieves a specific field template.                                      | `ResourcesHelper` |
+| `Get-AllFieldTemplates`                    | Retrieves all field templates.                                             | `ResourcesHelper` |
+| `Get-FieldTemplate`                        | Retrieves a specific field template.                                       | `ResourcesHelper` |
 | `Get-LanguagePair`                         | Maps one source language to multiple target languages for project/TM creation with multiple source-target pairs. | `ResourcesHelper` |
-| `Get-AllUsers`       | Retrieves all users.                                 | `UsersHelper`    |
-| `Get-User`           | Retrieves a specific user.                           | `UsersHelper`    |
-| `Get-AllGroups`      | Retrieves all groups.                                | `UsersHelper`    |
-| `Get-AllTermbases`          | Retrieves all termbases.                             | `TerminologyHelper`  |
-| `Get-Termbase`              | Retrieves a specific termbase.                       | `TerminologyHelper`  |
-| `New-Termbase`              | Creates a new termbase.                             | `TerminologyHelper`  |
-| `Remove-Termbase`           | Deletes an existing termbase.                        | `TerminologyHelper`  |
-| `Update-Termbase`           | Updates an existing termbase.                        | `TerminologyHelper`  |
-| `Import-Termbase`           | Imports a termbase from a specified file.           | `TerminologyHelper`  |
-| `Export-Termbase`           | Exports a termbase to a specified file.             | `TerminologyHelper`  |
-| `Get-AllTermbaseTemplates`  | Retrieves all termbase templates.                    | `TerminologyHelper`  |
-| `Get-TermbaseTemplate`      | Retrieves a specific termbase template.              | `TerminologyHelper`  |
-| `Remove-TermbaseTemplate`   | Deletes an existing termbase template.               | `TerminologyHelper`  |
-| `New-TermbaseTemplate`      | Creates a new termbase template.                     | `TerminologyHelper`  |
-| `Update-TermbaseTemplate`   | Updates an existing termbase template.               | `TerminologyHelper`  |
-| `Get-Field`                 | Formats fields for termbase and termbase templates creation/update. | `TerminologyHelper`  |
+| `Invoke-TranslationLookup`                 | Performs a translation lookup against a translation memory.                 | `ResourcesHelper` |
+| `Invoke-ConcordanceSearch`                 | Performs a concordance search against a translation memory.                 | `ResourcesHelper` |
+| `Add-TranslationUnit`                      | Adds a new translation unit to a translation memory.                       | `ResourcesHelper` |
+| `Update-TranslationUnit`                   | Updates an existing translation unit in a translation memory.              | `ResourcesHelper` |
+| `Request-FileAnalysis`                     | Requests file analysis for a project.                                      | `ResourcesHelper` |
+| `Get-FileAnalysisStatus`                   | Retrieves the status of a file analysis request.                           | `ResourcesHelper` |
+| `Send-ZipFile`                             | Uploads a ZIP file containing source files.                                | `ResourcesHelper` |
+| `Get-ZipFileStatus`                        | Retrieves the status of a ZIP file upload.                                 | `ResourcesHelper` |
+| `Get-AllLlmConfigurations`                 | Lists all LLM configurations for the account.                              | `ResourcesHelper` |
+| `Get-AllUsers`                             | Retrieves all users.                                                       | `UsersHelper`     |
+| `Get-User`                                 | Retrieves a specific user.                                                 | `UsersHelper`     |
+| `New-User`                                 | Creates a new user.                                                        | `UsersHelper`     |
+| `New-ServiceUser`                          | Creates a new service user for API integrations.                           | `UsersHelper`     |
+| `Update-User`                              | Updates an existing user.                                                  | `UsersHelper`     |
+| `Remove-User`                              | Deletes an existing user.                                                  | `UsersHelper`     |
+| `Get-AllGroups`                            | Retrieves all groups.                                                      | `UsersHelper`     |
+| `Get-Group`                                | Retrieves a specific group.                                                | `UsersHelper`     |
+| `New-Group`                                | Creates a new group.                                                       | `UsersHelper`     |
+| `Update-Group`                             | Updates an existing group.                                                 | `UsersHelper`     |
+| `Remove-Group`                             | Deletes an existing group.                                                 | `UsersHelper`     |
+| `Get-AllRoles`                             | Retrieves all roles.                                                       | `UsersHelper`     |
+| `Get-Role`                                 | Retrieves a specific role.                                                 | `UsersHelper`     |
+| `New-Role`                                 | Creates a new custom role.                                                 | `UsersHelper`     |
+| `Update-Role`                              | Updates an existing custom role.                                           | `UsersHelper`     |
+| `Remove-Role`                              | Deletes an existing custom role.                                           | `UsersHelper`     |
+| `Get-AllPermissions`                       | Retrieves all available permissions.                                       | `UsersHelper`     |
+| `Get-AllApplications`                      | Retrieves all applications.                                                | `UsersHelper`     |
+| `Get-Application`                          | Retrieves a specific application.                                          | `UsersHelper`     |
+| `New-Application`                          | Creates a new application.                                                 | `UsersHelper`     |
+| `Update-Application`                       | Updates an existing application.                                           | `UsersHelper`     |
+| `Remove-Application`                       | Deletes an existing application.                                           | `UsersHelper`     |
+| `Get-AllTermbases`                         | Retrieves all termbases.                                                   | `TerminologyHelper` |
+| `Get-Termbase`                             | Retrieves a specific termbase.                                             | `TerminologyHelper` |
+| `New-Termbase`                             | Creates a new termbase.                                                    | `TerminologyHelper` |
+| `Remove-Termbase`                          | Deletes an existing termbase.                                              | `TerminologyHelper` |
+| `Update-Termbase`                          | Updates an existing termbase.                                              | `TerminologyHelper` |
+| `Import-Termbase`                          | Imports a termbase from a specified file.                                  | `TerminologyHelper` |
+| `Export-Termbase`                          | Exports a termbase to a specified file.                                    | `TerminologyHelper` |
+| `Get-AllTermbaseTemplates`                 | Retrieves all termbase templates.                                          | `TerminologyHelper` |
+| `Get-TermbaseTemplate`                     | Retrieves a specific termbase template.                                    | `TerminologyHelper` |
+| `Remove-TermbaseTemplate`                  | Deletes an existing termbase template.                                     | `TerminologyHelper` |
+| `New-TermbaseTemplate`                     | Creates a new termbase template.                                           | `TerminologyHelper` |
+| `Update-TermbaseTemplate`                  | Updates an existing termbase template.                                     | `TerminologyHelper` |
+| `Get-Field`                                | Formats fields for termbase and termbase templates creation/update.        | `TerminologyHelper` |
+| `New-TermbaseEntry`                        | Creates a new entry in a termbase.                                         | `TerminologyHelper` |
+| `Get-AllTermbaseEntries`                   | Lists entries in a termbase with optional filtering and pagination.        | `TerminologyHelper` |
+| `Remove-AllTermbaseEntries`                | Deletes all entries from a termbase.                                       | `TerminologyHelper` |
+| `Get-TermbaseEntry`                        | Retrieves a specific termbase entry by ID.                                 | `TerminologyHelper` |
+| `Update-TermbaseEntry`                     | Updates an existing termbase entry.                                        | `TerminologyHelper` |
+| `Remove-TermbaseEntry`                     | Deletes a single termbase entry.                                           | `TerminologyHelper` |
+| `Search-TermbaseTerms`                     | Searches for terms in a termbase with normal, linguistic, or fuzzy matching. | `TerminologyHelper` |
 
 ## Ensuring File Permissions for Toolkit Files
 
@@ -334,6 +391,28 @@ If you find an issue you report it [here](https://github.com/RWS/language-cloud-
 
 ## Changes
 ### Version
+#### v1.2.0.0
+- Added workflow task operations to **ProjectHelper**: get, list, accept, reject, complete, release, reclaim, assign tasks.
+- Added target file export and download to **ProjectHelper**: export, poll status, and save as ZIP.
+- Added task deadline rescheduling to **ProjectHelper**.
+- Added translation engine update to **ResourcesHelper**.
+- Added workflow update to **ResourcesHelper**.
+- Added LLM configuration listing to **ResourcesHelper** (connected-ai endpoint).
+- Added termbase entry CRUD operations to **TerminologyHelper**: create, list, get, update, delete entries.
+- Added bulk entry deletion to **TerminologyHelper**.
+- Added term search (normal, linguistic, fuzzy) to **TerminologyHelper**.
+
+#### v1.1.0.0
+- Added **CommonHelper** module with shared utilities (pagination, headers, URI building, error handling).
+- Added user CRUD, service user creation, and application CRUD to **UsersHelper**.
+- Added group CRUD and role listing to **UsersHelper**.
+- Added custom role CRUD and permission listing to **UsersHelper**.
+- Added TM translation unit operations (lookup, concordance, add, update) to **ResourcesHelper**.
+- Added pricing model CRUD to **ResourcesHelper**.
+- Added file analysis and ZIP file upload to **ResourcesHelper**.
+- Refactored all modules to use CommonHelper for shared functionality.
+- Replaced hardcoded base URIs with configurable `Set-BaseUri`/`Get-BaseUri`.
+
 #### v1.0.1.0
 - Added an MSI installer for streamlined toolkit installation.
 
@@ -344,3 +423,4 @@ If you find an issue you report it [here](https://github.com/RWS/language-cloud-
     - **ProjectHelper**: Facilitates project-related operations.
     - **ResourcesHelper**: Handles resource management tasks.
     - **UsersHelper**: Supports user-related operations.
+    - **TerminologyHelper**: Manages terminology resources and termbases.
