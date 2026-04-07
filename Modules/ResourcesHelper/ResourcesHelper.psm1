@@ -4470,6 +4470,91 @@ function Update-TranslationEngine
 
 #endregion
 
+#region Workflow Updates
+
+<#
+.SYNOPSIS
+    Updates a workflow's name, description, and/or task configurations.
+
+.DESCRIPTION
+    The `Update-Workflow` function updates an existing workflow. You can change the name, 
+    description, and task configurations (including assignees, skip settings, and scope per 
+    task template). Returns no content on success (HTTP 204).
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER workflowId
+    (Mandatory) The unique identifier of the workflow to update.
+
+.PARAMETER name
+    (Optional) The new name for the workflow.
+
+.PARAMETER description
+    (Optional) The new description for the workflow.
+
+.PARAMETER taskConfigurations
+    (Optional) An array of hashtables defining the task configurations. Each entry should contain:
+    - taskTemplate: hashtable with "id" (string, required)
+    - isSkipped: boolean (required)
+    - assignees: array of hashtables with "type" and optionally "user", "group", or 
+      "vendorOrderTemplate" (each containing "id")
+    - scope: hashtable with "type" (global/languageDirection) and optionally sourceLanguage, 
+      targetLanguage, or languageDirection
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-Workflow -accessKey $accessKey -workflowId "wf-123" `
+        -name "Updated Workflow" -description "New description"
+
+.EXAMPLE
+    # Update task configurations with assignees
+    $taskConfigs = @(
+        @{
+            taskTemplate = @{ id = "tt-abc" }
+            isSkipped = $false
+            assignees = @(
+                @{ type = "user"; user = @{ id = "user-123" } }
+            )
+            scope = @{ type = "global" }
+        },
+        @{
+            taskTemplate = @{ id = "tt-def" }
+            isSkipped = $true
+            assignees = @()
+            scope = @{ type = "global" }
+        }
+    )
+    Update-Workflow -accessKey $accessKey -workflowId "wf-123" -taskConfigurations $taskConfigs
+#>
+function Update-Workflow
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $workflowId,
+
+        [string] $name,
+        [string] $description,
+        [array] $taskConfigurations
+    )
+
+    $uri = "$(Get-LCBaseUri)/workflows/$workflowId"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{}
+    if ($name)               { $body.name = $name }
+    if ($description)        { $body.description = $description }
+    if ($taskConfigurations) { $body.taskConfigurations = @($taskConfigurations) }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+}
+
+#endregion
+
 #region Connected AI
 
 <#
@@ -4531,6 +4616,7 @@ Export-ModuleMember Remove-Customer;
 Export-ModuleMember Update-Customer;
 Export-ModuleMember Get-AllWorkflows;
 Export-ModuleMember Get-Workflow;
+Export-ModuleMember Update-Workflow;
 Export-ModuleMember Get-AllPricingModels;
 Export-ModuleMember Get-PricingModel;
 Export-ModuleMember New-PricingModel;

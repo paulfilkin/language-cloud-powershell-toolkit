@@ -18,7 +18,7 @@
     Copyright = '© 2011 - 2026 SDL Limited as part of the RWS Holdings Plc group of companies (\"RWS Group\").'
     
     # Description of the functionality provided by this module
-    Description = 'A PowerShell module to manage resources in Language Cloud. Includes project templates, translation memories, customers, pricing models, translation unit operations, file analysis, zip file uploads, translation engine updates, and LLM configuration listing.'
+    Description = 'A PowerShell module to manage resources in Language Cloud. Includes project templates, translation memories, customers, pricing models, translation unit operations, file analysis, zip file uploads, translation engine updates, workflow updates, and LLM configuration listing.'
     
     # Minimum version of the Windows PowerShell engine required by this module
     PowerShellVersion = '7.4'
