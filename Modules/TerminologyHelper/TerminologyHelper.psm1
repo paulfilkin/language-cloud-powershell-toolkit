@@ -1,4 +1,10 @@
-$baseUri = "https://lc-api.sdl.com/public-api/v1"
+Import-Module -Name CommonHelper
+
+# Dynamic base URI resolution from CommonHelper
+function script:Get-LCBaseUri
+{
+    return Get-BaseUri
+}
 
 <#
 .SYNOPSIS
@@ -62,7 +68,7 @@ $baseUri = "https://lc-api.sdl.com/public-api/v1"
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/termbases" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/termbases" `
             -location $location -fields "fields=id,name,description,copyright,location,termbaseStructure" `
             -locationStrategy $locationStrategy;
 
@@ -113,7 +119,7 @@ function Get-Termbase
         [string] $termbaseName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/termbases" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/termbases" `
                          -uriQuery "?fields=id,name,description,copyright,location,termbaseStructure" `
                          -id $termbaseId -name $termbaseName -propertyName "Termbase"
 }
@@ -242,7 +248,7 @@ function New-Termbase
         return;
     }
 
-    $uri = "$baseUri/termbases"
+    $uri = "$(Get-LCBaseUri)/termbases"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{
         name = $name
@@ -366,7 +372,7 @@ function Remove-Termbase
 
     if ($termbase)
     {
-        $uri = "$baseUri/termbases/$($termbase.Id)";
+        $uri = "$(Get-LCBaseUri)/termbases/$($termbase.Id)";
         $headers = Get-RequestHeader -accessKey $accessKey;
         Invoke-SafeMethod {
             $null = Invoke-RestMethod -Uri $uri -Headers $headers -Method Delete;
@@ -452,7 +458,7 @@ function Update-Termbase
         return;
     }
 
-    $uri = "$baseUri/termbases/$($termbase.Id)";
+    $uri = "$(Get-LCBaseUri)/termbases/$($termbase.Id)";
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{}
 
@@ -563,7 +569,7 @@ function Import-Termbase
             return;
         }
 
-        $uri = "$baseUri/termbases/$($termbase.Id)/imports?strictImport=$strictImport&duplicateEntriesStrategy=$duplicateEntriesStrategy";
+        $uri = "$(Get-LCBaseUri)/termbases/$($termbase.Id)/imports?strictImport=$strictImport&duplicateEntriesStrategy=$duplicateEntriesStrategy";
         $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
         $headers.Add("X-LC-Tenant", $accessKey.tenant)
         $headers.Add("Content-Type", "multipart/form-data")
@@ -588,7 +594,7 @@ function Import-Termbase
 
         if ($response)
         {
-            $pollUri = "$baseUri/termbases/$($termbase.Id)/imports/$($response.Id)";
+            $pollUri = "$(Get-LCBaseUri)/termbases/$($termbase.Id)/imports/$($response.Id)";
             $queueStatus = Invoke-SafeMethod {
                 Invoke-RestMethod -uri $pollUri -Headers $headers
             }
@@ -678,7 +684,7 @@ function Export-Termbase
         return;
     }
 
-    $uri = "$baseUri/termbases/$($termbase.Id)/exports";
+    $uri = "$(Get-LCBaseUri)/termbases/$($termbase.Id)/exports";
     $body = [ordered]@{
         format = $format
         properties = @{
@@ -700,7 +706,7 @@ function Export-Termbase
 
     if ($response)
     {
-        $pollUri = "$baseUri/termbases/$($termbase.Id)/exports/$($response.Id)";
+        $pollUri = "$(Get-LCBaseUri)/termbases/$($termbase.Id)/exports/$($response.Id)";
         $queueStatus = Invoke-SafeMethod {
             Invoke-RestMethod -uri $pollUri -Headers $headers
         }
@@ -712,7 +718,7 @@ function Export-Termbase
         if ($queueStatus.Status -ne "queued")
         {
             return Invoke-SafeMethod {
-                Invoke-RestMethod -Uri "$baseUri/termbases/$($termbase.Id)/exports/$($response.Id)/download" -Headers $headers -OutFile "$($pathToExport).$($format)";
+                Invoke-RestMethod -Uri "$(Get-LCBaseUri)/termbases/$($termbase.Id)/exports/$($response.Id)/download" -Headers $headers -OutFile "$($pathToExport).$($format)";
             }
         } 
 
@@ -781,7 +787,7 @@ function Get-AllTermbaseTemplates
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/termbase-templates" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/termbase-templates" `
             -location $location -fields "fields=id,name,description,copyright,location,type,languages,fields,fields.name,fields.level,fields.dataType,fields.pickListValues,fields.allowCustomValues,fields.allowMultiple,fields.isMandatory" `
             -locationStrategy $locationStrategy;
 
@@ -835,7 +841,7 @@ function Get-TermbaseTemplate
         [string] $termbaseTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/termbase-templates" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/termbase-templates" `
             -uriQuery "?fields=id,name,description,copyright,location,type,languages,fields.name,fields.level,fields.dataType,fields.pickListValues,fields.allowCustomValues,fields.allowMultiple,fields.isMandatory" `
             -id $termbaseTemplateId -name $termbaseTemplateName -propertyName "Termbase template"
 }
@@ -891,7 +897,7 @@ function Remove-TermbaseTemplate
 
     if ($termbaseTemplate)
     {
-        $uri = "$baseUri/termbase-templates/$($termbaseTemplate.Id)";
+        $uri = "$(Get-LCBaseUri)/termbase-templates/$($termbaseTemplate.Id)";
         $headers = Get-RequestHeader -accessKey $accessKey
         Invoke-SafeMethod {
             $null = Invoke-RestMethod -Uri $uri -Headers $headers -method Delete;
@@ -1019,7 +1025,7 @@ function New-TermbaseTemplate
         return;
     }
 
-    $uri = "$baseUri/termbase-templates"
+    $uri = "$(Get-LCBaseUri)/termbase-templates"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{
         name = $name
@@ -1170,7 +1176,7 @@ function Update-TermbaseTemplate
         return;
     }
 
-    $uri = "$baseUri/termbase-templates/$($termbaseTemplate.Id)";
+    $uri = "$(Get-LCBaseUri)/termbase-templates/$($termbaseTemplate.Id)";
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{}
 
@@ -1282,151 +1288,6 @@ function Get-Field
     }
 }
 
-function Get-Item 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [psobject] $accessKey,
-
-        [Parameter(Mandatory=$true)]
-        [String] $uri,
-
-        [String] $uriQuery,
-        [String] $id,
-        [string] $name,
-        [string] $propertyName
-    )
-
-    if ($id)
-    {
-        $uri += "/$id/$uriQuery"
-        $headers = Get-RequestHeader -accessKey $accessKey;
-
-        $item = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers }
-    }
-    elseif ($name)
-    {
-        $items = Get-AllItems -accessKey $accessKey -uri $($uri + $uriQuery);
-        if ($items)
-        {
-            $item = $items | Where-Object {$_.Name -eq $name } | Select-Object -First 1;
-        }
-
-        if ($null -eq $item)
-        {
-            Write-Host "$propertyName could not be found" -ForegroundColor Green;
-        }
-    }
-
-    if ($item)
-    {
-        return $item;
-    }
-}
-
-function Get-AllItems
-{
-    param (
-        [psobject] $accessKey,
-        [String] $uri)
-
-    $headers = Get-RequestHeader -accessKey $accessKey;
-
-    $response = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers}
-    if ($response)
-    {
-        return $response.Items;
-    }
-}
-
-function Get-StringUri 
-{
-    param (
-        [String] $root,
-        [String] $name,
-        [psobject] $location,
-        [string] $locationStrategy,
-        [string] $sort,
-        [string] $fields
-    )
-
-    $filter = Get-FilterString -name $name -location $location -locationStrategy $locationStrategy -sort $sort
-    if ($filter -and $fields)
-    {
-        return $root + "?" + $filter + "&" + $($fields);
-    }
-    elseif ($filter)
-    {
-        return $root + "?" + $filter
-    }
-    elseif ($fields)
-    {
-        return $root + "?" + $fields
-    }
-    else 
-    {
-        return $root;
-    }
-}
-
-function Get-FilterString {
-    param (
-        [string] $name,
-        [psobject] $location,
-        [string] $locationStrategy,
-        [string] $sort
-    )
-
-    # Initialize an empty array for filters
-    $filter = @()
-    # Check if the parameters are not null or empty, and add them to the filter array
-    if (-not [string]::IsNullOrEmpty($name)) {
-        $filter += "name=$name"
-    }
-    if ($location -and $(-not [string]::IsNullOrEmpty($locationStrategy))) 
-    {
-        $filter += "location=$($location.Id)&locationStrategy=$locationStrategy"
-    }
-    if (-not [string]::IsNullOrEmpty($sort)) {
-        $filter += "sort=$sort"
-    }
-
-    # Return the filter string by joining with "&"
-    return $filter -join '&'
-}
-
-function Invoke-SafeMethod 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [scriptblock] $method
-    )
-
-    try {
-        return & $Method
-    } catch {
-        $response = ConvertFrom-Json $_;
-        Write-Host $response.Message -ForegroundColor Green;
-        return $null
-    }
-}
-
-
-function Get-RequestHeader
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [psobject] $accessKey
-    )
-    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-    $headers.Add("X-LC-Tenant", $accessKey.tenant)
-    $headers.Add("Accept", "application/json")
-    $headers.Add("Content-Type", "application/json")
-    $headers.Add("Authorization", $accessKey.token)
-
-    return $headers;
-}
-
 function Format-Fields 
 {
     param (
@@ -1487,7 +1348,7 @@ function ConvertTo-TermbaseStructure
     $body = $multipartContent
 
     return Invoke-SafeMethod {
-        Invoke-RestMethod 'https://lc-api.sdl.com/public-api/v1/termbase-templates/convert-xdt?fields=languages.languageCode, fields.name,fields.level, fields.dataType, fields.pickListValues,fields.allowCustomValues,fields.allowMultiple,fields.isMandatory' -Method 'POST' -Headers $headers -Body $body
+        Invoke-RestMethod "$(Get-LCBaseUri)/termbase-templates/convert-xdt?fields=languages.languageCode, fields.name,fields.level, fields.dataType, fields.pickListValues,fields.allowCustomValues,fields.allowMultiple,fields.isMandatory" -Method 'POST' -Headers $headers -Body $body
     }
 }
 

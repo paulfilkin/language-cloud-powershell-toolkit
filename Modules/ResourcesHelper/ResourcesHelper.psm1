@@ -1,4 +1,11 @@
-$baseUri = "https://lc-api.sdl.com/public-api/v1"
+Import-Module -Name CommonHelper
+
+# Dynamic base URI resolution - always reads the current value from CommonHelper
+# This ensures any calls to Set-BaseUri are respected
+function script:Get-LCBaseUri
+{
+    return Get-BaseUri
+}
 
 <#
 .SYNOPSIS
@@ -68,7 +75,7 @@ function Get-AllProjectTemplates
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName;
     }
 
-    $uri = Get-StringUri -root "$baseUri/project-templates" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/project-templates" `
                          -name $name -location $location `
                          -locationStrategy $locationStrategy `
                          -fields "&fields=id,name,description,languageDirections,location"
@@ -119,7 +126,7 @@ function Get-ProjectTemplate
         [String] $projectTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/project-templates" -uriQuery "?fields=id,name,description,languageDirections,location" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/project-templates" -uriQuery "?fields=id,name,description,languageDirections,location" `
                     -id $projectTemplateId -name $projectTemplateName -propertyName "Project template";
 }
 
@@ -292,7 +299,7 @@ function New-ProjectTemplate
         [string] $description
     )
 
-    $uri = "$baseUri/project-templates"
+    $uri = "$(Get-LCBaseUri)/project-templates"
     $headers = Get-RequestHeader -accessKey $accessKey
     $body = [ordered]@{
         name = $projectTemplateName
@@ -595,7 +602,7 @@ function Remove-ProjectTemplate
 
     if ($projectTemplate)
     {
-        $uri = "$baseUri/project-templates/$($projectTemplate.Id)"
+        $uri = "$(Get-LCBaseUri)/project-templates/$($projectTemplate.Id)"
         $headers = Get-RequestHeader -accessKey $accessKey
         Invoke-SafeMethod { 
                 Invoke-RestMethod -Uri $uri -Headers $headers -Method Delete;
@@ -774,7 +781,7 @@ function Update-ProjectTemplate
     {
         return;
     }
-    $uri = "$baseUri/project-templates/$($template.Id)";
+    $uri = "$(Get-LCBaseUri)/project-templates/$($template.Id)";
     $headers = Get-RequestHeader $accessKey;
 
     $body = @{}
@@ -1094,7 +1101,7 @@ function Get-AllTranslationEngines
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/translation-engines" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/translation-engines" `
                          -location $location -fields "fields=name,description,location,definition"`
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -1144,7 +1151,7 @@ function Get-TranslationEngine
         [String] $translationEngineName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/translation-engines" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-engines" `
          -uriQuery "?fields=name,description,location,definition" -id $translationEngineId `
          -name $translationEngineName -propertyName "Translation engine"
 }
@@ -1217,7 +1224,7 @@ function Get-AllCustomers
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/customers" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/customers" `
                          -location $location -fields "fields=id,name,location"`
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -1267,7 +1274,7 @@ function Get-Customer
         [string] $customerName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/customers" -uriQuery "?fields=id,name,location" -id $customerId -name $customerName -propertyName "Customer";
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/customers" -uriQuery "?fields=id,name,location" -id $customerId -name $customerName -propertyName "Customer";
 }
 
 <#
@@ -1315,7 +1322,7 @@ function Remove-Customer
         [string] $customerName
     )
 
-    $uri = "$baseUri/customers"
+    $uri = "$(Get-LCBaseUri)/customers"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $customer = Get-Customer -accessKey $accessKey -customerId $customerId -customerName $customerName
     if ($customer)
@@ -1391,7 +1398,7 @@ function New-Customer
         [string] $email
     )
     
-    $uri = "$baseUri/customers"
+    $uri = "$(Get-LCBaseUri)/customers"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{
         name = $customerName;
@@ -1505,7 +1512,7 @@ function Update-Customer
         return;
     }
 
-    $uri = "$baseUri/customers/$($customer.Id)";
+    $uri = "$(Get-LCBaseUri)/customers/$($customer.Id)";
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{
         name = $customer.name
@@ -1654,7 +1661,7 @@ function Get-AllFileTypeConfigurations
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/file-processing-configurations" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/file-processing-configurations" `
                         -location $location -fields "fields=id,name,location" `
                         -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -1704,7 +1711,7 @@ function Get-FileTypeConfiguration
         [string] $fileTypeName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/file-processing-configurations" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/file-processing-configurations" `
         -uriQuery "?fields=id,name,location" -id $fileTypeId -name $fileTypeName `
         -propertyName "File processing configuration"
 }
@@ -1776,7 +1783,7 @@ function Get-AllWorkflows
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/workflows" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/workflows" `
                          -location $location -fields "fields=id,name,description,location,workflowTemplate,languageDirections"`
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -1826,7 +1833,7 @@ function Get-Workflow
         [string] $workflowName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/workflows" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/workflows" `
          -uriQuery "?fields=id,name,description,location,workflowTemplate,languageDirections" `
          -id $workflowId -name $workflowName -propertyName "Workflow";
 }
@@ -1893,7 +1900,7 @@ function Get-AllPricingModels
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/pricing-models" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/pricing-models" `
                          -location $location -fields "fields=id,name,description,currencyCode,location,languageDirectionPricing"`
                          -locationStrategy $locationStrategy;
 
@@ -1942,7 +1949,7 @@ function Get-PricingModel {
         [String] $pricingModelName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/pricing-models" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/pricing-models" `
         -uriQuery "?fields=id,name,description,currencyCode,location" -id $pricingModelId -name $pricingModelName `
         -propertyName "Pricing model"
 }
@@ -2009,7 +2016,7 @@ function Get-AllScheduleTemplates
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/schedule-templates" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/schedule-templates" `
                          -location $location -fields "fields=name,description,location" `
                          -locationStrategy $locationStrategy;
 
@@ -2059,7 +2066,7 @@ function Get-ScheduleTemplate
         [string] $scheduleTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/schedule-templates" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/schedule-templates" `
         -uriQuery "?fields=name,description,location" -id $scheduleTemplateId -name $scheduleTemplateName `
         -propertyName "Schedule template"
 }
@@ -2109,7 +2116,7 @@ function Remove-ScheduleTemplate
         [string] $scheduleTemplateName
     )
 
-    $uri = "$baseUri/schedule-templates"
+    $uri = "$(Get-LCBaseUri)/schedule-templates"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $scheduleTemplate = Get-ScheduleTemplate -accessKey $accessKey -scheduleTemplateId $scheduleTemplateId -scheduleTemplateName $scheduleTemplateName
 
@@ -2150,7 +2157,7 @@ function Get-AllLocations
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey
     )
-    return Get-AllItems $accessKey "$baseUri/folders"
+    return Get-AllItems $accessKey "$(Get-LCBaseUri)/folders"
 }
 
 <#
@@ -2196,7 +2203,7 @@ function Get-Location
         [String] $locationName
     )
 
-    return Get-Item -accessKey $accessKey -id $locationId -name $locationName -uri "$baseUri/folders" -propertyName "Folder";
+    return Get-Item -accessKey $accessKey -id $locationId -name $locationName -uri "$(Get-LCBaseUri)/folders" -propertyName "Folder";
 }
 
 <#
@@ -2266,7 +2273,7 @@ function Get-AllCustomFields
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/custom-field-definitions" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/custom-field-definitions" `
                          -location $location -fields "fields=id,name,key,description,defaultValue,type,location,resourceType,isMandatory,pickListOptions" `
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -2316,7 +2323,7 @@ function Get-CustomField
         [String] $customFieldName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/custom-field-definitions" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/custom-field-definitions" `
          -propertyName "Custom field definition" `
          -uriQuery "?fields=id,name,key,description,defaultValue,type,location,resourceType,isMandatory,pickListOptions" `
          -id $customFieldId -name $customFieldName;
@@ -2384,7 +2391,7 @@ function Get-AllTranslationMemories
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/translation-memory" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/translation-memory" `
                          -location $location `
                          -locationStrategy $locationStrategy;
 
@@ -2434,7 +2441,7 @@ function Get-TranslationMemory
         [string] $translationMemoryName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/translation-memory" -id $translationMemoryId -name $translationMemoryName -propertyName "Translation memory";
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-memory" -id $translationMemoryId -name $translationMemoryName -propertyName "Translation memory";
 }
 
 <#
@@ -2534,7 +2541,7 @@ function New-TranslationMemory
     )
 
     # Create the http request basic data
-    $uri = "$baseUri/translation-memory"
+    $uri = "$(Get-LCBaseUri)/translation-memory"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{
         name = $name
@@ -2643,7 +2650,7 @@ function Remove-TranslationMemory
         [String] $translationMemoryName
     )
 
-    $uri = "$baseUri/translation-memory"
+    $uri = "$(Get-LCBaseUri)/translation-memory"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $tm = Get-TranslationMemory -accessKey $accessKey -translationMemoryId $translationMemoryId -translationMemoryName $translationMemoryName;
 
@@ -2863,7 +2870,7 @@ function Copy-TranslationMemory
         return;
     }
 
-    $uri = "$baseUri/translation-memory/$($tm.Id)/copy";
+    $uri = "$(Get-LCBaseUri)/translation-memory/$($tm.Id)/copy";
     $headers = Get-RequestHeader -accessKey $accessKey;
     Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Post; }
 }
@@ -2989,7 +2996,7 @@ function Import-TranslationMemory
     }
 
     # Construct the import URI
-    $importUri = "$baseUri/translation-memory/$($tm.Id)/imports";
+    $importUri = "$(Get-LCBaseUri)/translation-memory/$($tm.Id)/imports";
 
     # Prepare the body for the import request
     $importBody = [ordered]@{
@@ -3117,7 +3124,7 @@ function Export-TranslationMemory
         return;
     }
 
-    $uri = "$baseUri/translation-memory/$($tm.Id)/exports"
+    $uri = "$(Get-LCBaseUri)/translation-memory/$($tm.Id)/exports"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{
         languageDirection = @{
@@ -3138,7 +3145,7 @@ function Export-TranslationMemory
         return;
     }
 
-    $pollUri = "$baseUri/translation-memory/exports/$($response.Id)"
+    $pollUri = "$(Get-LCBaseUri)/translation-memory/exports/$($response.Id)"
 
     while ($true)
     {
@@ -3156,7 +3163,7 @@ function Export-TranslationMemory
         }
     }
 
-    $downloadUri = "$baseUri/translation-memory/exports/$($pollResponse.Id)/download"
+    $downloadUri = "$(Get-LCBaseUri)/translation-memory/exports/$($pollResponse.Id)/download"
     $null = Invoke-RestMethod -Uri $downloadUri -Headers $headers -OutFile $outputFilePath;
 }
 
@@ -3227,7 +3234,7 @@ function Get-AllTranslationQualityAssessments
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/tqa-profiles" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/tqa-profiles" `
                          -location $location `
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -3277,7 +3284,7 @@ function Get-TranslationQualityAssessment
         [string] $tqaName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/tqa-profiles" -id $tqaId -name $tqaName -propertyName "Tqa profile";
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/tqa-profiles" -id $tqaId -name $tqaName -propertyName "Tqa profile";
 }
 
 <#
@@ -3342,7 +3349,7 @@ function Get-AllLanguageProcessingRules
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/language-processing-rules" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/language-processing-rules" `
                          -location $location -fields "fields=id,name,description"`
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -3392,7 +3399,7 @@ function Get-LanguageProcessingRule
         [string] $languageProcessingName
     )
 
-    return Get-Item -accessKey $accessKey  -uri "$baseUri/language-processing-rules" `
+    return Get-Item -accessKey $accessKey  -uri "$(Get-LCBaseUri)/language-processing-rules" `
              -uriQuery "?fields=id,name,description" -id $languageProcessingId -name $languageProcessingName `
              -propertyName "Language processing rule"
 }
@@ -3469,7 +3476,7 @@ function Get-AllFieldTemplates
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/translation-memory/field-templates" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/translation-memory/field-templates" `
                          -location $location -fields "fields=id,name,description,location"`
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -3519,7 +3526,7 @@ function Get-FieldTemplate
         [string] $fieldTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/translation-memory/field-templates" -uriQuery "?fields=id,name,description,location" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-memory/field-templates" -uriQuery "?fields=id,name,description,location" `
                 -id $fieldTemplateId -name $fieldTemplateName -propertyName "Field template";
 }
 
@@ -3565,226 +3572,6 @@ function Get-LanguagePair {
         }
         
         $languageDirections += $languageDirection;
-    }
-
-    return $languageDirections;
-}
-
-function Get-Item 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [psobject] $accessKey,
-
-        [Parameter(Mandatory=$true)]
-        [String] $uri,
-
-        [String] $uriQuery,
-        [String] $id,
-        [string] $name,
-        [string] $propertyName
-    )
-
-    if ($id)
-    {
-        $uri += "/$id/$uriQuery"
-        $headers = Get-RequestHeader -accessKey $accessKey;
-
-        $item = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers }
-    }
-    elseif ($name)
-    {
-        $items = Get-AllItems -accessKey $accessKey -uri $($uri + $uriQuery);
-        if ($items)
-        {
-            $item = $items | Where-Object {$_.Name -eq $name } | Select-Object -First 1;
-        }
-
-        if ($null -eq $item)
-        {
-            Write-Host "$propertyName could not be found" -ForegroundColor Green;
-        }
-    }
-
-    if ($item)
-    {
-        return $item;
-    }
-}
-
-function Get-AllItems
-{
-    param (
-        [psobject] $accessKey,
-        [String] $uri)
-
-    $headers = Get-RequestHeader -accessKey $accessKey;
-
-    $response = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers}
-    if ($response)
-    {
-        return $response.Items;
-    }
-}
-
-function Get-FilterString 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [String[]] $propertyNames,
-
-        [Parameter(Mandatory=$true)]
-        [String[]] $propertyValues
-    )
-
-    return "";
-
-    if ($propertyNames -and $propertyValues)
-    {
-        $elements = @();
-        for ($i = 0; $i -lt $propertyName.Count; $i++)
-        {
-            $element = $propertyNames[$i] + "=" + $propertyValues[$i]
-            $elements += $element;
-        }
-    
-        $output = $elements -join "&"
-        return $output;        
-    }
-}
-
-function Get-LocationStrategy 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [Bool] $includeSubFolders
-    )
-
-    if ($includeSubFolders)
-    {
-        return "lineage"
-    }
-
-    return "location"
-}
-
-function Get-RequestHeader
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [psobject] $accessKey
-    )
-    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-    $headers.Add("X-LC-Tenant", $accessKey.tenant)
-    $headers.Add("Accept", "application/json")
-    $headers.Add("Content-Type", "application/json")
-    $headers.Add("Authorization", $accessKey.token)
-
-    return $headers;
-}
-
-function Get-StringUri 
-{
-    param (
-        [String] $root,
-        [String] $name,
-        [psobject] $location,
-        [string] $locationStrategy,
-        [string] $sort,
-        [string] $fields
-    )
-
-    $filter = Get-FilterString -name $name -location $location -locationStrategy $locationStrategy -sort $sort
-    if ($filter -and $fields)
-    {
-        return $root + "?" + $filter + "&" + $($fields);
-    }
-    elseif ($filter)
-    {
-        return $root + "?" + $filter
-    }
-    elseif ($fields)
-    {
-        return $root + "?" + $fields
-    }
-    else 
-    {
-        return $root;
-    }
-}
-
-function Get-FilterString {
-    param (
-        [string] $name,
-        [psobject] $location,
-        [string] $locationStrategy,
-        [string] $sort
-    )
-
-    # Initialize an empty array for filters
-    $filter = @()
-    
-    # Check if the parameters are not null or empty, and add them to the filter array
-    if (-not [string]::IsNullOrEmpty($name)) {
-        $filter += "name=$name"
-    }
-    if ($location -and $(-not [string]::IsNullOrEmpty($locationStrategy))) 
-    {
-        $filter += "location=$($location.Id)&locationStrategy=$locationStrategy"
-    }
-    if (-not [string]::IsNullOrEmpty($sort)) {
-        $filter += "sort=$sort"
-    }
-
-    # Return the filter string by joining with "&"
-    return $filter -join '&'
-}
-
-function Invoke-SafeMethod 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [scriptblock] $method
-    )
-
-    try {
-        return & $Method
-    } catch {
-        $response = ConvertFrom-Json $_;
-        Write-Host $response.Message -ForegroundColor Green;
-        return $null
-    }
-
-}
-
-function Get-LanguageDirections 
-{
-    param (
-        [String[]] $sourceLanguage,
-        [String[]] $targetLanguages,
-        [psobject[]] $languagePairs
-    )
-
-    $languageDirections = @();
-    if ($sourceLanguage -and $targetLanguages)
-    {
-        foreach ($target in $targetLanguages)
-        {
-    
-            $languageDirection = [ordered]@{
-                sourceLanguage = [ordered]@{languageCode = "$sourceLanguage"}
-                targetLanguage = [ordered]@{languageCode = "$target"}
-            }
-            
-            $languageDirections += $languageDirection;
-        }
-    
-    }
-    elseif ($languagePairs)
-    {
-        foreach ($pairs in $languagePairs) {
-            $languageDirections += $pairs;
-        }
     }
 
     return $languageDirections;

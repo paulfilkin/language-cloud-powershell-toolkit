@@ -1,4 +1,10 @@
-$baseUri = "https://lc-api.sdl.com/public-api/v1"
+Import-Module -Name CommonHelper
+
+# Dynamic base URI resolution from CommonHelper
+function script:Get-LCBaseUri
+{
+    return Get-BaseUri
+}
 
 <#
 .SYNOPSIS
@@ -319,7 +325,7 @@ function Get-AllProjects {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/projects" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/projects" `
                          -location $location -fields "fields=id,name" `
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -369,7 +375,7 @@ function Get-Project
         [string] $projectName
     )
 
-    return Get-ProjectItem -accessKey $accessKey -uri "$baseUri/projects" -id $projectId -name $projectName `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/projects" -id $projectId -name $projectName `
         -uriQuery "?fields=id,name" `
         -propertyName "Project"
 }
@@ -387,7 +393,7 @@ function Start-Project
     $headers.Add("Authorization", $accessKey.token)
 
     return Invoke-SafeMethod -method {
-        Invoke-RestMethod -Uri "https://lc-api.sdl.com/public-api/v1/projects/$projectId/start" -Method Put     -Headers $headers
+        Invoke-RestMethod -Uri "$(Get-LCBaseUri)/projects/$projectId/start" -Method Put     -Headers $headers
     }
 }
 
@@ -427,7 +433,7 @@ function Add-File
     $body = $multipartContent
     
     Invoke-SafeMethod {
-        $null = Invoke-RestMethod "https://lc-api.sdl.com/public-api/v1/projects/$projectId/source-files" -Method 'POST' -Headers $headers -Body $body
+        $null = Invoke-RestMethod "$(Get-LCBaseUri)/projects/$projectId/source-files" -Method 'POST' -Headers $headers -Body $body
         Write-Host "File [" $file.Name "] added" -ForegroundColor Green
     }
 }
@@ -840,245 +846,8 @@ function Get-ProjectCreationRequest
     $headers.Add("Authorization", $accessKey.token)
 
     return Invoke-SafeMethod {
-        Invoke-RestMethod 'https://lc-api.sdl.com/public-api/v1/projects' -Method 'POST' -Headers $headers -Body $json;
+        Invoke-RestMethod "$(Get-LCBaseUri)/projects" -Method 'POST' -Headers $headers -Body $json;
     }
-}
-
-function Get-LanguageDirections 
-{
-    param (
-        [String] $sourceLanguage,
-        [String[]] $targetLanguages
-    )
-
-    $result = @()
-
-    foreach ($language in $targetLanguages)
-    {
-        $sourceLanguageObject = @{"languageCode" = $sourceLanguage}
-        $targetLanguageObject = @{"languageCode" = $language}
-
-        $result += @{
-            "sourceLanguage" = $sourceLanguageObject
-            "targetLanguage" = $targetLanguageObject
-        }
-    }
-
-    return $result;
-}
-
-function Get-LanguageDirections 
-{
-    param (
-        [String[]] $sourceLanguage,
-        [String[]] $targetLanguages
-    )
-
-    $languageDirections = @();
-    if ($sourceLanguage -and $targetLanguages)
-    {
-        foreach ($target in $targetLanguages)
-        {
-    
-            $languageDirection = [ordered]@{
-                sourceLanguage = [ordered]@{languageCode = "$sourceLanguage"}
-                targetLanguage = [ordered]@{languageCode = "$target"}
-            }
-            
-            $languageDirections += $languageDirection;
-        }
-    
-    }
-
-    return $languageDirections;
-}
-
-function Invoke-SafeMethod 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [scriptblock] $method
-    )
-
-    try {
-        return & $Method
-    } catch {
-        return $_;
-        $response = ConvertFrom-Json $_;
-        Write-Host $response.Message -ForegroundColor Green;
-        return $null
-    }
-
-}
-
-function Get-ProjectItem 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [psobject] $accessKey,
-
-        [Parameter(Mandatory=$true)]
-        [String] $uri,
-
-        [String] $uriQuery,
-        [String] $id,
-        [string] $name,
-        [string] $propertyName
-    )
-
-    if ($id)
-    {
-        $uri += "/$id/$uriQuery"
-        $headers = Get-RequestHeader -accessKey $accessKey;
-
-        $item = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers }
-    }
-    elseif ($name)
-    {
-        $items = Get-AllItems -accessKey $accessKey -uri $($uri + $uriQuery);
-        if ($items)
-        {
-            $item = $items | Where-Object {$_.Name -eq $name } | Select-Object -First 1;
-        }
-
-        if ($null -eq $item)
-        {
-            Write-Host "$propertyName could not be found" -ForegroundColor Green;
-        }
-    }
-
-    if ($item)
-    {
-        return $item;
-    }
-}
-
-function Get-AllItems
-{
-    param (
-        [psobject] $accessKey,
-        [String] $uri)
-
-    $headers = Get-RequestHeader -accessKey $accessKey;
-
-    $response = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers}
-    if ($response)
-    {
-        return $response.Items;
-    }
-}
-
-function Get-FilterString 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [String[]] $propertyNames,
-
-        [Parameter(Mandatory=$true)]
-        [String[]] $propertyValues
-    )
-
-    return "";
-
-    if ($propertyNames -and $propertyValues)
-    {
-        $elements = @();
-        for ($i = 0; $i -lt $propertyName.Count; $i++)
-        {
-            $element = $propertyNames[$i] + "=" + $propertyValues[$i]
-            $elements += $element;
-        }
-    
-        $output = $elements -join "&"
-        return $output;        
-    }
-}
-
-function Get-LocationStrategy 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [Bool] $includeSubFolders
-    )
-
-    if ($includeSubFolders)
-    {
-        return "lineage"
-    }
-
-    return "location"
-}
-
-function Get-RequestHeader
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [psobject] $accessKey
-    )
-    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-    $headers.Add("X-LC-Tenant", $accessKey.tenant)
-    $headers.Add("Accept", "application/json")
-    $headers.Add("Content-Type", "application/json")
-    $headers.Add("Authorization", $accessKey.token)
-
-    return $headers;
-}
-
-function Get-StringUri 
-{
-    param (
-        [String] $root,
-        [String] $name,
-        [psobject] $location,
-        [string] $locationStrategy,
-        [string] $sort,
-        [string] $fields
-    )
-
-    $filter = Get-FilterString -name $name -location $location -locationStrategy $locationStrategy -sort $sort
-    if ($filter -and $fields)
-    {
-        return $root + "?" + $filter + "&" + $($fields);
-    }
-    elseif ($filter)
-    {
-        return $root + "?" + $filter
-    }
-    elseif ($fields)
-    {
-        return $root + "?" + $fields
-    }
-    else 
-    {
-        return $root;
-    }
-}
-
-function Get-FilterString {
-    param (
-        [string] $name,
-        [psobject] $location,
-        [string] $locationStrategy,
-        [string] $sort
-    )
-
-    # Initialize an empty array for filters
-    $filter = @()
-    
-    # Check if the parameters are not null or empty, and add them to the filter array
-    if (-not [string]::IsNullOrEmpty($name)) {
-        $filter += "name=$name"
-    }
-    if ($location -and $(-not [string]::IsNullOrEmpty($locationStrategy))) 
-    {
-        $filter += "location=$($location.Id)&locationStrategy=$locationStrategy"
-    }
-    if (-not [string]::IsNullOrEmpty($sort)) {
-        $filter += "sort=$sort"
-    }
-
-    # Return the filter string by joining with "&"
-    return $filter -join '&'
 }
 
 Export-ModuleMember New-Project;
