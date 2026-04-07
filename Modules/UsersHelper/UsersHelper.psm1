@@ -648,6 +648,364 @@ function Get-AllGroups
     return Get-AllItems -accessKey $accessKey -uri $uri
 }
 
+<#
+.SYNOPSIS
+Retrieves a specific group by ID or name.
+
+.DESCRIPTION
+The `Get-Group` function retrieves the details of a specific group. If a group ID is provided, it is 
+fetched directly via GET /groups/{groupId}. If a name is provided, all groups are listed and filtered locally.
+
+.PARAMETER accessKey
+(Mandatory) The access key object returned by the `Get-AccessKey` function.
+
+.PARAMETER groupId
+(Optional) The ID of the group to retrieve. Either groupId or groupName must be provided.
+
+.PARAMETER groupName
+(Optional) The name of the group to retrieve. Either groupId or groupName must be provided.
+
+.EXAMPLE
+    # Example 1: Retrieve a group by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Group -accessKey $accessKey -groupId "group-12345"
+
+.EXAMPLE
+    # Example 2: Retrieve a group by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Group -accessKey $accessKey -groupName "Translators"
+#>
+function Get-Group
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $groupId,
+        [string] $groupName
+    )
+
+    $baseUri = Get-BaseUri
+
+    return Get-Item -accessKey $accessKey -uri "$baseUri/groups" `
+                    -id $groupId -name $groupName -propertyName "Group"
+}
+
+#endregion
+
+#region Groups - Create / Update / Remove
+
+<#
+.SYNOPSIS
+Creates a new group.
+
+.DESCRIPTION
+The `New-Group` function creates a new group in the system. You can assign roles, additional 
+location-scoped roles, and users at creation time.
+
+.PARAMETER accessKey
+(Mandatory) The access key object returned by the `Get-AccessKey` function.
+
+.PARAMETER name
+(Mandatory) The name of the group.
+
+.PARAMETER description
+(Optional) A description of the group.
+
+.PARAMETER locationId
+(Optional) The ID of the location to assign the group to. Either locationId or locationName should be provided.
+
+.PARAMETER locationName
+(Optional) The name of the location to assign the group to. Either locationId or locationName should be provided.
+
+.PARAMETER roleIds
+(Optional) An array of role IDs to assign to the group at its home location.
+
+.PARAMETER additionalRoles
+(Optional) An array of hashtables, each with a 'location' key (location ID string) and a 'roles' key 
+(array of role ID strings), for assigning roles at additional locations.
+
+.PARAMETER userIds
+(Optional) An array of user IDs to add as members of the group.
+
+.PARAMETER metadata
+(Optional) A hashtable of additional metadata to attach to the group.
+
+.EXAMPLE
+    # Example 1: Create a simple group
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    New-Group -accessKey $accessKey -name "Translators" -description "Translation team" -locationId "12345"
+
+.EXAMPLE
+    # Example 2: Create a group with roles and users
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    New-Group -accessKey $accessKey -name "Reviewers" -locationName "FolderA" `
+        -roleIds @("role-id-1", "role-id-2") -userIds @("user-id-1", "user-id-2")
+
+.EXAMPLE
+    # Example 3: Create a group with additional location-scoped roles
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    $extraRoles = @(
+        @{ location = "location-id-2"; roles = @("role-id-3") }
+    )
+    New-Group -accessKey $accessKey -name "Multi-location Team" -locationId "12345" `
+        -roleIds @("role-id-1") -additionalRoles $extraRoles
+#>
+function New-Group
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $name,
+
+        [string] $description,
+        [string] $locationId,
+        [string] $locationName,
+        [string[]] $roleIds,
+        [hashtable[]] $additionalRoles,
+        [string[]] $userIds,
+        [hashtable] $metadata
+    )
+
+    $baseUri = Get-BaseUri
+    $uri = "$baseUri/groups"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    # Resolve location
+    if ($locationId -or $locationName)
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+        if ($null -eq $location)
+        {
+            return
+        }
+    }
+
+    $body = [ordered]@{
+        name = $name
+    }
+
+    if ($description) { $body.description = $description }
+
+    if ($location)
+    {
+        $body.location = $location.Id
+    }
+
+    if ($roleIds)
+    {
+        $body.roles = @($roleIds)
+    }
+
+    if ($additionalRoles)
+    {
+        $body.additionalRoles = @($additionalRoles)
+    }
+
+    if ($userIds)
+    {
+        $body.users = @($userIds)
+    }
+
+    if ($metadata)
+    {
+        $body.metadata = $metadata
+    }
+
+    $json = $body | ConvertTo-Json -Depth 5
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+Updates an existing group.
+
+.DESCRIPTION
+The `Update-Group` function modifies the properties of a specified group. You can update the name, 
+description, role assignments, additional location-scoped roles, user memberships, and metadata.
+
+.PARAMETER accessKey
+(Mandatory) The access key object returned by the `Get-AccessKey` function.
+
+.PARAMETER groupId
+(Optional) The ID of the group to update. Either groupId or groupName must be provided.
+
+.PARAMETER groupName
+(Optional) The name of the group to update. Either groupId or groupName must be provided.
+
+.PARAMETER name
+(Optional) The updated name for the group.
+
+.PARAMETER description
+(Optional) The updated description for the group.
+
+.PARAMETER roleIds
+(Optional) An array of role IDs to assign to the group. This replaces the current role assignments.
+
+.PARAMETER additionalRoles
+(Optional) An array of hashtables, each with a 'location' key (location ID string) and a 'roles' key 
+(array of role ID strings). This replaces the current additional role assignments.
+
+.PARAMETER userIds
+(Optional) An array of user IDs to set as members of the group. This replaces the current membership.
+
+.PARAMETER metadata
+(Optional) A hashtable of additional metadata to attach to the group.
+
+.EXAMPLE
+    # Example 1: Update a group's description
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-Group -accessKey $accessKey -groupId "group-12345" -description "Updated description"
+
+.EXAMPLE
+    # Example 2: Update group membership and roles
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-Group -accessKey $accessKey -groupName "Translators" `
+        -roleIds @("role-id-1") -userIds @("user-id-1", "user-id-2", "user-id-3")
+#>
+function Update-Group
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $groupId,
+        [string] $groupName,
+
+        [string] $name,
+        [string] $description,
+        [string[]] $roleIds,
+        [hashtable[]] $additionalRoles,
+        [string[]] $userIds,
+        [hashtable] $metadata
+    )
+
+    $group = Get-Group -accessKey $accessKey -groupId $groupId -groupName $groupName
+    if ($null -eq $group)
+    {
+        return
+    }
+
+    $baseUri = Get-BaseUri
+    $uri = "$baseUri/groups/$($group.Id)"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{}
+
+    if ($name)        { $body.name = $name }
+    if ($description) { $body.description = $description }
+
+    if ($roleIds)
+    {
+        $body.roles = @($roleIds)
+    }
+
+    if ($additionalRoles)
+    {
+        $body.additionalRoles = @($additionalRoles)
+    }
+
+    if ($userIds)
+    {
+        $body.users = @($userIds)
+    }
+
+    if ($metadata)
+    {
+        $body.metadata = $metadata
+    }
+
+    $json = $body | ConvertTo-Json -Depth 5
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+}
+
+<#
+.SYNOPSIS
+Removes a group from the system.
+
+.DESCRIPTION
+The `Remove-Group` function deletes a specified group. The group can be identified by its ID or name.
+
+.PARAMETER accessKey
+(Mandatory) The access key object returned by the `Get-AccessKey` function.
+
+.PARAMETER groupId
+(Optional) The ID of the group to remove. Either groupId or groupName must be provided.
+
+.PARAMETER groupName
+(Optional) The name of the group to remove. Either groupId or groupName must be provided.
+
+.EXAMPLE
+    # Example 1: Remove a group by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-Group -accessKey $accessKey -groupId "group-12345"
+
+.EXAMPLE
+    # Example 2: Remove a group by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-Group -accessKey $accessKey -groupName "Old Team"
+#>
+function Remove-Group
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $groupId,
+        [string] $groupName
+    )
+
+    $group = Get-Group -accessKey $accessKey -groupId $groupId -groupName $groupName
+    if ($null -eq $group)
+    {
+        return
+    }
+
+    $baseUri = Get-BaseUri
+    $uri = "$baseUri/groups/$($group.Id)"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    Invoke-SafeMethod -method {
+        $null = Invoke-RestMethod -Headers $headers -Method Delete -Uri $uri
+        Write-Host "Group removed" -ForegroundColor Green
+    }
+}
+
+#endregion
+
+#region Roles - Read
+
+<#
+.SYNOPSIS
+Retrieves all roles available in the system.
+
+.DESCRIPTION
+The `Get-AllRoles` function fetches a paginated list of all roles from the API, including their IDs, 
+names, descriptions, types, and permissions. This is useful for discovering available role IDs when 
+creating or updating groups.
+
+.PARAMETER accessKey
+(Mandatory) The access key object returned by the `Get-AccessKey` function.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllRoles -accessKey $accessKey
+#>
+function Get-AllRoles
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey
+    )
+
+    $baseUri = Get-BaseUri
+    $uri = "$baseUri/roles"
+
+    return Get-AllItems -accessKey $accessKey -uri $uri
+}
+
 #endregion
 
 #region Applications - Read
@@ -947,6 +1305,11 @@ Export-ModuleMember New-ServiceUser
 Export-ModuleMember Update-User
 Export-ModuleMember Remove-User
 Export-ModuleMember Get-AllGroups
+Export-ModuleMember Get-Group
+Export-ModuleMember New-Group
+Export-ModuleMember Update-Group
+Export-ModuleMember Remove-Group
+Export-ModuleMember Get-AllRoles
 Export-ModuleMember Get-AllApplications
 Export-ModuleMember Get-Application
 Export-ModuleMember New-Application
