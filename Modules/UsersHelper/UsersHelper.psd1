@@ -3,7 +3,7 @@
     ModuleToProcess = 'UsersHelper.psm1'
     
     # Version number of this module.
-    ModuleVersion = '1.0.0.0'
+    ModuleVersion = '1.1.0.0'
     
     # ID used to uniquely identify this module
     GUID = '{C3701916-91D7-4693-9443-1BDB1F3AFEF4}'
@@ -15,10 +15,10 @@
     CompanyName = 'SDL Limited as part of the RWS Holdings Plc group of companies'
     
     # Copyright statement for this module
-    Copyright = '© 2011 - 2022 SDL Limited as part of the RWS Holdings Plc group of companies (\"RWS Group\").'
+    Copyright = '© 2011 - 2026 SDL Limited as part of the RWS Holdings Plc group of companies ("RWS Group").'
     
     # Description of the functionality provided by this module
-    Description = 'A PowerShell module to list users or groups from the Language Cloud'
+    Description = 'A PowerShell module to manage users, groups, and applications in Language Cloud. Supports CRUD operations for human users, service users, and application integrations.'
     
     # Minimum version of the Windows PowerShell engine required by this module
     PowerShellVersion = '7.4'
