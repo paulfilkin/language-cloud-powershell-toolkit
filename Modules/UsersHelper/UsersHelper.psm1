@@ -1006,6 +1006,278 @@ function Get-AllRoles
     return Get-AllItems -accessKey $accessKey -uri $uri
 }
 
+<#
+.SYNOPSIS
+Retrieves a specific role by ID or name.
+
+.DESCRIPTION
+The `Get-Role` function retrieves the details of a specific role, including its permissions. If a role 
+ID is provided, it is fetched directly. If a name is provided, all roles are listed and filtered locally.
+
+.PARAMETER accessKey
+(Mandatory) The access key object returned by the `Get-AccessKey` function.
+
+.PARAMETER roleId
+(Optional) The ID of the role to retrieve. Either roleId or roleName must be provided.
+
+.PARAMETER roleName
+(Optional) The name of the role to retrieve. Either roleId or roleName must be provided.
+
+.EXAMPLE
+    # Example 1: Retrieve a role by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Role -accessKey $accessKey -roleId "role-12345"
+
+.EXAMPLE
+    # Example 2: Retrieve a role by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Role -accessKey $accessKey -roleName "Project Manager"
+#>
+function Get-Role
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $roleId,
+        [string] $roleName
+    )
+
+    $baseUri = Get-BaseUri
+
+    return Get-Item -accessKey $accessKey -uri "$baseUri/roles" `
+                    -id $roleId -name $roleName -propertyName "Role"
+}
+
+#endregion
+
+#region Roles - Create / Update / Remove
+
+<#
+.SYNOPSIS
+Creates a new custom role.
+
+.DESCRIPTION
+The `New-Role` function creates a new custom role in the system with the specified permissions. Use 
+`Get-AllPermissions` to discover available permission names.
+
+.PARAMETER accessKey
+(Mandatory) The access key object returned by the `Get-AccessKey` function.
+
+.PARAMETER name
+(Mandatory) The name of the role.
+
+.PARAMETER description
+(Optional) A description of the role.
+
+.PARAMETER permissions
+(Mandatory) An array of permission name strings to assign to the role (e.g. "projectCreate", "projectRead").
+
+.EXAMPLE
+    # Example 1: Create a role with specific permissions
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    New-Role -accessKey $accessKey -name "Reviewer" -description "Can read and review projects" `
+        -permissions @("projectRead", "taskRead", "taskUpdate")
+
+.EXAMPLE
+    # Example 2: Create a minimal role
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    New-Role -accessKey $accessKey -name "Read Only" -permissions @("projectRead")
+#>
+function New-Role
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $name,
+
+        [string] $description,
+
+        [Parameter(Mandatory=$true)]
+        [string[]] $permissions
+    )
+
+    $baseUri = Get-BaseUri
+    $uri = "$baseUri/roles"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        name        = $name
+        permissions = @($permissions)
+    }
+
+    if ($description)
+    {
+        $body.description = $description
+    }
+
+    $json = $body | ConvertTo-Json -Depth 5
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+Updates an existing custom role.
+
+.DESCRIPTION
+The `Update-Role` function modifies the properties of a specified custom role. You can update the name, 
+description, and permission assignments.
+
+.PARAMETER accessKey
+(Mandatory) The access key object returned by the `Get-AccessKey` function.
+
+.PARAMETER roleId
+(Optional) The ID of the role to update. Either roleId or roleName must be provided.
+
+.PARAMETER roleName
+(Optional) The name of the role to update. Either roleId or roleName must be provided.
+
+.PARAMETER name
+(Optional) The updated name for the role.
+
+.PARAMETER description
+(Optional) The updated description for the role.
+
+.PARAMETER permissions
+(Optional) An array of permission name strings. This replaces the current permission assignments.
+
+.EXAMPLE
+    # Example 1: Update a role's permissions
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-Role -accessKey $accessKey -roleId "role-12345" `
+        -permissions @("projectRead", "projectCreate", "taskRead", "taskUpdate")
+
+.EXAMPLE
+    # Example 2: Rename a role
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-Role -accessKey $accessKey -roleName "Reviewer" -name "Senior Reviewer" `
+        -description "Extended review permissions"
+#>
+function Update-Role
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $roleId,
+        [string] $roleName,
+
+        [string] $name,
+        [string] $description,
+        [string[]] $permissions
+    )
+
+    $role = Get-Role -accessKey $accessKey -roleId $roleId -roleName $roleName
+    if ($null -eq $role)
+    {
+        return
+    }
+
+    $baseUri = Get-BaseUri
+    $uri = "$baseUri/roles/$($role.Id)"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{}
+
+    if ($name)        { $body.name = $name }
+    if ($description) { $body.description = $description }
+
+    if ($permissions)
+    {
+        $body.permissions = @($permissions)
+    }
+
+    $json = $body | ConvertTo-Json -Depth 5
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+}
+
+<#
+.SYNOPSIS
+Removes a custom role from the system.
+
+.DESCRIPTION
+The `Remove-Role` function deletes a specified custom role. The role can be identified by its ID or name.
+
+.PARAMETER accessKey
+(Mandatory) The access key object returned by the `Get-AccessKey` function.
+
+.PARAMETER roleId
+(Optional) The ID of the role to remove. Either roleId or roleName must be provided.
+
+.PARAMETER roleName
+(Optional) The name of the role to remove. Either roleId or roleName must be provided.
+
+.EXAMPLE
+    # Example 1: Remove a role by ID
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-Role -accessKey $accessKey -roleId "role-12345"
+
+.EXAMPLE
+    # Example 2: Remove a role by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-Role -accessKey $accessKey -roleName "Deprecated Role"
+#>
+function Remove-Role
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $roleId,
+        [string] $roleName
+    )
+
+    $role = Get-Role -accessKey $accessKey -roleId $roleId -roleName $roleName
+    if ($null -eq $role)
+    {
+        return
+    }
+
+    $baseUri = Get-BaseUri
+    $uri = "$baseUri/roles/$($role.Id)"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    Invoke-SafeMethod -method {
+        $null = Invoke-RestMethod -Headers $headers -Method Delete -Uri $uri
+        Write-Host "Role removed" -ForegroundColor Green
+    }
+}
+
+#endregion
+
+#region Permissions - Read
+
+<#
+.SYNOPSIS
+Retrieves all available permissions in the system.
+
+.DESCRIPTION
+The `Get-AllPermissions` function fetches a paginated list of all permissions from the API. Each 
+permission includes its name, description, category, entity type, and dependencies. This is useful 
+for discovering valid permission names when creating or updating custom roles.
+
+.PARAMETER accessKey
+(Mandatory) The access key object returned by the `Get-AccessKey` function.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllPermissions -accessKey $accessKey
+#>
+function Get-AllPermissions
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey
+    )
+
+    $baseUri = Get-BaseUri
+    $uri = "$baseUri/permissions"
+
+    return Get-AllItems -accessKey $accessKey -uri $uri
+}
+
 #endregion
 
 #region Applications - Read
@@ -1310,6 +1582,11 @@ Export-ModuleMember New-Group
 Export-ModuleMember Update-Group
 Export-ModuleMember Remove-Group
 Export-ModuleMember Get-AllRoles
+Export-ModuleMember Get-Role
+Export-ModuleMember New-Role
+Export-ModuleMember Update-Role
+Export-ModuleMember Remove-Role
+Export-ModuleMember Get-AllPermissions
 Export-ModuleMember Get-AllApplications
 Export-ModuleMember Get-Application
 Export-ModuleMember New-Application
