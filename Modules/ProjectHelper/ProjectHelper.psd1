@@ -3,7 +3,7 @@
     ModuleToProcess = 'ProjectHelper.psm1'
     
     # Version number of this module.
-    ModuleVersion = '1.1.0.0'
+    ModuleVersion = '1.2.0.0'
     
     # ID used to uniquely identify this module
     GUID = '{69AA70EF-0BD1-4087-8642-66EE44CE5259}'
@@ -18,7 +18,7 @@
     Copyright = '© 2011 - 2026 SDL Limited as part of the RWS Holdings Plc group of companies (\"RWS Group\").'
     
     # Description of the functionality provided by this module
-    Description = 'A PowerShell module to create and manage Language Cloud projects. Includes project creation, target file export, and task deadline management.'
+    Description = 'A PowerShell module to create and manage Language Cloud projects. Includes project creation, target file export, task deadline management, and workflow task operations (get, list, accept, reject, complete, release, reclaim, assign).'
     
     # Minimum version of the Windows PowerShell engine required by this module
     PowerShellVersion = '7.4'
