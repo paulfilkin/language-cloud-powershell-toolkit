@@ -433,6 +433,96 @@ function Get-LanguageDirections
     return $languageDirections
 }
 
+<#
+.SYNOPSIS
+    Retrieves the list of supported languages from Language Cloud.
+
+.DESCRIPTION
+    Calls the public languages endpoint to return all languages supported by Language Cloud.
+    Supports optional filtering by language codes, type (all, specific, neutral), and field
+    selection.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey containing token and tenant properties.
+
+.PARAMETER languageCodes
+    (Optional) An array of language codes to filter by (e.g. @("en-US", "de-DE")).
+
+.PARAMETER type
+    (Optional) Filter by language type. Allowed values: all, specific, neutral.
+
+.PARAMETER fields
+    (Optional) A comma-separated list of fields to include in the response
+    (e.g. "languageCode,englishName").
+
+.OUTPUTS
+    Array of language objects with properties such as languageCode, englishName, direction,
+    parentLanguageCode, defaultSpecificLanguageCode, and isNeutral.
+
+.EXAMPLE
+    $languages = Get-SupportedLanguages -accessKey $accessKey
+    $languages | Format-Table languageCode, englishName, direction
+
+.EXAMPLE
+    $german = Get-SupportedLanguages -accessKey $accessKey -languageCodes @("de-DE", "de-AT")
+
+.EXAMPLE
+    $neutral = Get-SupportedLanguages -accessKey $accessKey -type "neutral" -fields "languageCode,englishName"
+#>
+function Get-SupportedLanguages
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [String[]] $languageCodes,
+
+        [ValidateSet("all", "specific", "neutral")]
+        [String] $type,
+
+        [String] $fields
+    )
+
+    $uri = "$(Get-BaseUri)/languages"
+    $queryParams = @()
+
+    if ($languageCodes)
+    {
+        foreach ($code in $languageCodes)
+        {
+            $queryParams += "languageCodes=$code"
+        }
+    }
+
+    if ($type)
+    {
+        $queryParams += "type=$type"
+    }
+
+    if ($fields)
+    {
+        $queryParams += "fields=$fields"
+    }
+
+    if ($queryParams.Count -gt 0)
+    {
+        $uri += "?" + ($queryParams -join "&")
+    }
+
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $response = Invoke-SafeMethod {
+        Invoke-RestMethod -Uri $uri -Method GET -Headers $headers
+    }
+
+    if ($null -eq $response -or $null -eq $response.items)
+    {
+        return @()
+    }
+
+    return $response.items
+}
+
 Export-ModuleMember -Function Get-BaseUri
 Export-ModuleMember -Function Set-BaseUri
 Export-ModuleMember -Function Get-RequestHeader
@@ -442,3 +532,4 @@ Export-ModuleMember -Function Get-StringUri
 Export-ModuleMember -Function Get-FilterString
 Export-ModuleMember -Function Invoke-SafeMethod
 Export-ModuleMember -Function Get-LanguageDirections
+Export-ModuleMember -Function Get-SupportedLanguages
