@@ -1,5 +1,4 @@
 @{
-
     # Script module or binary module file associated with this manifest
     ModuleToProcess = 'ProjectHelper.psm1'
     
@@ -35,7 +34,7 @@
     
     # Modules that must be imported into the global environment prior to importing
     # this module
-    RequiredModules = @()
+    RequiredModules = @('CommonHelper')
     
     # Assemblies that must be loaded prior to importing this module
     RequiredAssemblies = @()

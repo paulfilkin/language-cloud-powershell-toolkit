@@ -1,12 +1,13 @@
 @{
+
     # Script module or binary module file associated with this manifest
-    ModuleToProcess = 'ResourcesHelper.psm1'
+    ModuleToProcess = 'CommonHelper.psm1'
     
     # Version number of this module.
     ModuleVersion = '1.0.0.0'
     
     # ID used to uniquely identify this module
-    GUID = '{49736F81-E71A-46DE-9F38-D493346F5F4F}'
+    GUID = '{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}'
     
     # Author of this module
     Author = 'Trados Appstore Team'
@@ -18,7 +19,7 @@
     Copyright = '© 2011 - 2022 SDL Limited as part of the RWS Holdings Plc group of companies (\"RWS Group\").'
     
     # Description of the functionality provided by this module
-    Description = 'A PowerShell module to list resources from the Language Cloud'
+    Description = 'Shared utility functions for the Language Cloud PowerShell Toolkit including API request helpers, pagination, and URI construction.'
     
     # Minimum version of the Windows PowerShell engine required by this module
     PowerShellVersion = '7.4'
@@ -34,7 +35,7 @@
     
     # Modules that must be imported into the global environment prior to importing
     # this module
-    RequiredModules = @('CommonHelper')
+    RequiredModules = @()
     
     # Assemblies that must be loaded prior to importing this module
     RequiredAssemblies = @()
@@ -70,8 +71,8 @@
     
     # List of all files packaged with this module
     FileList = @(
-        '.\ResourcesHelper.psm1'
-        '.\ResourcesHelper.psd1'
+        '.\CommonHelper.psm1'
+        '.\CommonHelper.psd1'
     )
     
     # Private data to pass to the module specified in ModuleToProcess

@@ -1,4 +1,4 @@
-$baseUri = "https://lc-api.sdl.com/public-api/v1"
+Import-Module -Name CommonHelper
 
 <#
 .SYNOPSIS
@@ -22,10 +22,10 @@ To obtain this access key, you can use the `Get-AccessKey` method, which retriev
 .PARAMETER locationStrategy
 (Optional) The strategy to determine how the location is used when filtering users. Default is "location".
 The available options are:
-    - "location" (default): Retrieves termbases from the specified location.
-    - "bloodline": Retrieves termbases from the specified location and its parent folders.
-    - "lineage": Retrieves termbases from the specified location and its subfolders.
-    - "genealogy": Retrieves termbases from both subfolders and parent folders of the specified location.
+    - "location" (default): Retrieves users from the specified location.
+    - "bloodline": Retrieves users from the specified location and its parent folders.
+    - "lineage": Retrieves users from the specified location and its subfolders.
+    - "genealogy": Retrieves users from both subfolders and parent folders of the specified location.
 
 .PARAMETER sortProperty
 (Optional) The property by which the results should be sorted. Providing a property name (e.g., "name") will sort the list in ascending order. 
@@ -63,17 +63,19 @@ function Get-AllUsers
         [string] $sortProperty
     )
 
-    $location = @{};
+    $baseUri = Get-BaseUri
+
+    $location = @{}
     if ($locationId -or $locationName)
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
     $uri = Get-StringUri -root "$baseUri/users" `
-                         -location $location -fields "fields=id,email,firstName,lastName,location"`
-                         -locationStrategy $locationStrategy -sort $sortProperty;
+                         -location $location -fields "fields=id,email,firstName,lastName,location" `
+                         -locationStrategy $locationStrategy -sort $sortProperty
 
-    return Get-AllItems -accessKey $accessKey -uri $uri;
+    return Get-AllItems -accessKey $accessKey -uri $uri
 }
 
 <#
@@ -115,11 +117,6 @@ To obtain this access key, you can use the `Get-AccessKey` method, which retriev
     # Example 3: Retrieve a user by first and last name
     $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
     Get-User -accessKey $accessKey -userFirstName "John" -userLastName "Doe"
-
-.EXAMPLE
-    # Example 4: Attempt to retrieve a non-existent user
-    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
-    Get-User -accessKey $accessKey -userEmail "nonexistent@example.com"
 #>
 function Get-User {
     param (
@@ -132,38 +129,38 @@ function Get-User {
         [string] $userLastName
     )
 
+    $baseUri = Get-BaseUri
     $uri = "$baseUri/users"
 
     if ($userId)
     {
-        $uri = $baseUri + "/users/" + $userId
+        $uri = "$baseUri/users/$userId"
         $headers = Get-RequestHeader -accessKey $accessKey
         return Invoke-SafeMethod {
-            Invoke-RestMethod -uri $uri -Headers $headers
+            Invoke-RestMethod -Uri $uri -Headers $headers
         }
     }
     else 
     {
-        $users = Get-AllItems -accessKey $accessKey -uri $uri;
+        $users = Get-AllItems -accessKey $accessKey -uri $uri
         if ($userEmail)
         {
-            $user = $users | Where-Object {$_.email -eq $userEmail } | Select-Object -First 1;
+            $user = $users | Where-Object { $_.email -eq $userEmail } | Select-Object -First 1
         }
         elseif ($userFirstName -and $userLastName)
         {
-            $user = $users | Where-Object {$_.firstName -eq $userFirstName -and $_.lastName -eq $userLastName} | Select-Object -First 1;
+            $user = $users | Where-Object { $_.firstName -eq $userFirstName -and $_.lastName -eq $userLastName } | Select-Object -First 1
         }
 
         if ($null -eq $user)
         {
-            Write-Host "User could not be found" -ForegroundColor Green;
+            Write-Host "User could not be found" -ForegroundColor Green
         }
         else 
         {
-            return $user;
+            return $user
         }
     }
-
 }
 
 <#
@@ -188,13 +185,14 @@ To obtain this access key, you can use the `Get-AccessKey` method, which retriev
 .PARAMETER locationStrategy
 (Optional) The strategy to determine how the location is used when filtering groups. Default is "bloodline".
 The available options are:
-        - "location" (default): Retrieves termbases from the specified location.
-        - "bloodline": Retrieves termbases from the specified location and its parent folders.
-        - "lineage": Retrieves termbases from the specified location and its subfolders.
-        - "genealogy": Retrieves termbases from both subfolders and parent folders of the specified location.
+    - "location": Retrieves groups from the specified location.
+    - "bloodline" (default): Retrieves groups from the specified location and its parent folders.
+    - "lineage": Retrieves groups from the specified location and its subfolders.
+    - "genealogy": Retrieves groups from both subfolders and parent folders of the specified location.
 
 .PARAMETER sortProperty
-(Optional) The property by which the results should be sorted. Providing a property name (e.g., "name") will sort the list in ascending order. Prefixing a property with a dash (e.g., "-name") will sort it in descending order.
+(Optional) The property by which the results should be sorted. Providing a property name (e.g., "name") will sort the list in ascending order. 
+Prefixing a property with a dash (e.g., "-name") will sort it in descending order.
 
 .EXAMPLE
     # Example 1: Retrieve all groups available in the system
@@ -207,19 +205,9 @@ The available options are:
     Get-AllGroups -accessKey $accessKey -locationId "12345"
 
 .EXAMPLE
-    # Example 3: Retrieve groups from a specific location using the location name
-    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
-    Get-AllGroups -accessKey $accessKey -locationName "FolderA"
-
-.EXAMPLE
-    # Example 4: Retrieve groups sorted by name
+    # Example 3: Retrieve groups sorted by name
     $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
     Get-AllGroups -accessKey $accessKey -sortProperty "name"
-
-.EXAMPLE
-    # Example 5: Retrieve groups sorted by description in descending order
-    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
-    Get-AllGroups -accessKey $accessKey -sortProperty "-description"
 #>
 function Get-AllGroups
 {
@@ -233,142 +221,21 @@ function Get-AllGroups
         [string] $sortProperty
     )
     
-    $location = @{};
+    $baseUri = Get-BaseUri
+
+    $location = @{}
     if ($locationId -or $locationName)
     {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
     $uri = Get-StringUri -root "$baseUri/groups" `
-                         -location $location -fields "fields=id,name,description,location"`
-                         -locationStrategy $locationStrategy -sort $sortProperty;
+                         -location $location -fields "fields=id,name,description,location" `
+                         -locationStrategy $locationStrategy -sort $sortProperty
 
-    return Get-AllItems -accessKey $accessKey -uri $uri;
+    return Get-AllItems -accessKey $accessKey -uri $uri
 }
 
-function Get-AllItems
-{
-    param (
-        [psobject] $accessKey,
-        [String] $uri)
-
-    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-    $headers.Add("X-LC-Tenant", $accessKey.tenant)
-    $headers.Add("Accept", "application/json")
-    $headers.Add("Authorization", $accessKey.token)
-
-    $response = Invoke-SafeMethod {
-        Invoke-RestMethod $uri -Method 'GET' -Headers $headers
-    }
-
-    if ($response)
-    {
-        return $response.Items;
-    }
-}
-
-function Get-LocationStrategy 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [Bool] $includeSubFolders
-    )
-
-    if ($includeSubFolders)
-    {
-        return "lineage"
-    }
-
-    return "location"
-}
-
-function Get-RequestHeader
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [psobject] $accessKey
-    )
-    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-    $headers.Add("X-LC-Tenant", $accessKey.tenant)
-    $headers.Add("Accept", "application/json")
-    $headers.Add("Content-Type", "application/json")
-    $headers.Add("Authorization", $accessKey.token)
-
-    return $headers;
-}
-
-function Get-StringUri 
-{
-    param (
-        [String] $root,
-        [String] $name,
-        [psobject] $location,
-        [string] $locationStrategy,
-        [string] $sort,
-        [string] $fields
-    )
-
-    $filter = Get-FilterString -name $name -location $location -locationStrategy $locationStrategy -sort $sort
-    if ($filter -and $fields)
-    {
-        return $root + "?" + $filter + "&" + $($fields);
-    }
-    elseif ($filter)
-    {
-        return $root + "?" + $filter
-    }
-    elseif ($fields)
-    {
-        return $root + "?" + $fields
-    }
-    else 
-    {
-        return $root;
-    }
-}
-
-function Get-FilterString {
-    param (
-        [string] $name,
-        [psobject] $location,
-        [string] $locationStrategy,
-        [string] $sort
-    )
-
-    # Initialize an empty array for filters
-    $filter = @()
-    # Check if the parameters are not null or empty, and add them to the filter array
-    if (-not [string]::IsNullOrEmpty($name)) {
-        $filter += "name=$name"
-    }
-    if ($location -and $(-not [string]::IsNullOrEmpty($locationStrategy))) 
-    {
-        $filter += "location=$($location.Id)&locationStrategy=$locationStrategy"
-    }
-    if (-not [string]::IsNullOrEmpty($sort)) {
-        $filter += "sort=$sort"
-    }
-
-    # Return the filter string by joining with "&"
-    return $filter -join '&'
-}
-
-function Invoke-SafeMethod 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [scriptblock] $method
-    )
-
-    try {
-        return & $Method
-    } catch {
-        $response = ConvertFrom-Json $_;
-        Write-Host $response.Message -ForegroundColor Green;
-        return $null
-    }
-}
-
-Export-ModuleMember Get-AllUsers; #
-Export-ModuleMember Get-User;
-Export-ModuleMember Get-AllGroups;
+Export-ModuleMember Get-AllUsers
+Export-ModuleMember Get-User
+Export-ModuleMember Get-AllGroups
