@@ -3577,6 +3577,807 @@ function Get-LanguagePair {
     return $languageDirections;
 }
 
+#region Translation Unit Operations
+
+<#
+.SYNOPSIS
+    Performs a translation memory lookup for a given text segment.
+
+.DESCRIPTION
+    The `Invoke-TranslationLookup` function searches the translation memories associated with a 
+    translation engine for matches against the provided source text. Returns translation proposals 
+    with match scores.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER content
+    (Mandatory) The source text to look up.
+
+.PARAMETER sourceLanguage
+    (Mandatory) The source language code (e.g. "en-US").
+
+.PARAMETER targetLanguage
+    (Mandatory) The target language code (e.g. "de-DE").
+
+.PARAMETER translationEngineId
+    (Mandatory) The ID of the translation engine whose TMs should be searched.
+
+.PARAMETER contentType
+    (Optional) The content type of the input. Default is "text".
+
+.PARAMETER settings
+    (Optional) A hashtable containing TM lookup settings including minimumMatchValue and penalties.
+
+.EXAMPLE
+    # Example 1: Simple lookup
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Invoke-TranslationLookup -accessKey $accessKey -content "Hello world" `
+        -sourceLanguage "en-US" -targetLanguage "de-DE" -translationEngineId "engine-123"
+
+.EXAMPLE
+    # Example 2: Lookup with custom minimum match value
+    $settings = @{
+        translationMemory = @{
+            minimumMatchValue = 80
+        }
+    }
+    Invoke-TranslationLookup -accessKey $accessKey -content "Hello world" `
+        -sourceLanguage "en-US" -targetLanguage "de-DE" -translationEngineId "engine-123" `
+        -settings $settings
+#>
+function Invoke-TranslationLookup
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $content,
+
+        [Parameter(Mandatory=$true)]
+        [string] $sourceLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $targetLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $translationEngineId,
+
+        [string] $contentType = "text",
+        [hashtable] $settings
+    )
+
+    $uri = "$(Get-LCBaseUri)/translations/lookup"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        input = [ordered]@{
+            content     = $content
+            contentType = $contentType
+        }
+        languageDirection = [ordered]@{
+            sourceLanguage = @{ languageCode = $sourceLanguage }
+            targetLanguage = @{ languageCode = $targetLanguage }
+        }
+        definition = @{
+            translationEngineId = $translationEngineId
+        }
+    }
+
+    if ($settings)
+    {
+        $body.settings = $settings
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+    Performs a concordance search against translation memories.
+
+.DESCRIPTION
+    The `Invoke-ConcordanceSearch` function searches for occurrences of the provided text within 
+    translation memory segments. Unlike lookup, concordance finds partial matches within stored segments.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER content
+    (Mandatory) The text to search for.
+
+.PARAMETER sourceLanguage
+    (Mandatory) The source language code (e.g. "en-US").
+
+.PARAMETER targetLanguage
+    (Mandatory) The target language code (e.g. "de-DE").
+
+.PARAMETER translationEngineId
+    (Mandatory) The ID of the translation engine whose TMs should be searched.
+
+.PARAMETER targetOnly
+    (Optional) Whether to search only in target segments. Default is $false.
+
+.PARAMETER settings
+    (Optional) A hashtable containing TM search settings including minimumMatchValue and penalties.
+
+.EXAMPLE
+    # Example 1: Simple concordance search
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Invoke-ConcordanceSearch -accessKey $accessKey -content "translation memory" `
+        -sourceLanguage "en-US" -targetLanguage "de-DE" -translationEngineId "engine-123"
+
+.EXAMPLE
+    # Example 2: Search in target segments only
+    Invoke-ConcordanceSearch -accessKey $accessKey -content "Ubersetzungsspeicher" `
+        -sourceLanguage "en-US" -targetLanguage "de-DE" -translationEngineId "engine-123" `
+        -targetOnly $true
+#>
+function Invoke-ConcordanceSearch
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $content,
+
+        [Parameter(Mandatory=$true)]
+        [string] $sourceLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $targetLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $translationEngineId,
+
+        [bool] $targetOnly = $false,
+        [hashtable] $settings
+    )
+
+    $uri = "$(Get-LCBaseUri)/translations/concordance"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        input = @{
+            content = $content
+        }
+        languageDirection = [ordered]@{
+            sourceLanguage = @{ languageCode = $sourceLanguage }
+            targetLanguage = @{ languageCode = $targetLanguage }
+        }
+        definition = @{
+            translationEngineId = $translationEngineId
+        }
+        targetOnly = $targetOnly
+    }
+
+    if ($settings)
+    {
+        $body.settings = $settings
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+    Adds a translation unit to a translation memory.
+
+.DESCRIPTION
+    The `Add-TranslationUnit` function adds a new translation unit (source and target segment pair) 
+    to the translation memories associated with a translation engine.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER content
+    (Mandatory) The translation unit content as a structured string (typically XLIFF or similar format 
+    containing both source and target segments).
+
+.PARAMETER translationEngineId
+    (Mandatory) The ID of the translation engine whose TMs should receive the translation unit.
+
+.PARAMETER settings
+    (Optional) A hashtable containing settings such as field values and ifTargetSegmentsDiffer behaviour.
+    Example: @{ fields = @(@{ name = "Client"; values = @("Acme") }); ifTargetSegmentsDiffer = "addNew" }
+
+.EXAMPLE
+    # Example 1: Add a simple translation unit
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Add-TranslationUnit -accessKey $accessKey -content "<xliff>...</xliff>" -translationEngineId "engine-123"
+
+.EXAMPLE
+    # Example 2: Add with field values and conflict handling
+    $settings = @{
+        fields = @(
+            @{ name = "Client"; values = @("Acme Corp") }
+        )
+        ifTargetSegmentsDiffer = "overwrite"
+    }
+    Add-TranslationUnit -accessKey $accessKey -content "<xliff>...</xliff>" `
+        -translationEngineId "engine-123" -settings $settings
+#>
+function Add-TranslationUnit
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $content,
+
+        [Parameter(Mandatory=$true)]
+        [string] $translationEngineId,
+
+        [hashtable] $settings
+    )
+
+    $uri = "$(Get-LCBaseUri)/translations/translation-unit"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        input = @{
+            content = $content
+        }
+        definition = @{
+            translationEngineId = $translationEngineId
+        }
+    }
+
+    if ($settings)
+    {
+        $body.settings = $settings
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+    Updates an existing translation unit in a translation memory.
+
+.DESCRIPTION
+    The `Update-TranslationUnit` function updates an existing translation unit in the translation 
+    memories associated with a translation engine.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER content
+    (Mandatory) The updated translation unit content.
+
+.PARAMETER translationEngineId
+    (Mandatory) The ID of the translation engine whose TMs contain the translation unit.
+
+.PARAMETER settings
+    (Optional) A hashtable containing settings such as field values.
+    Example: @{ fields = @(@{ name = "Client"; values = @("Acme") }) }
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-TranslationUnit -accessKey $accessKey -content "<xliff>...</xliff>" -translationEngineId "engine-123"
+#>
+function Update-TranslationUnit
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $content,
+
+        [Parameter(Mandatory=$true)]
+        [string] $translationEngineId,
+
+        [hashtable] $settings
+    )
+
+    $uri = "$(Get-LCBaseUri)/translations/translation-unit"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        input = @{
+            content = $content
+        }
+        definition = @{
+            translationEngineId = $translationEngineId
+        }
+    }
+
+    if ($settings)
+    {
+        $body.settings = $settings
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+}
+
+#endregion
+
+#region Pricing Model CRUD
+
+<#
+.SYNOPSIS
+    Creates a new pricing model.
+
+.DESCRIPTION
+    The `New-PricingModel` function creates a new pricing model in the system. Pricing models define 
+    cost structures for translation work including per-language pricing and additional costs.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER name
+    (Mandatory) The name of the pricing model.
+
+.PARAMETER currencyCode
+    (Mandatory) The currency code (e.g. "EUR", "USD", "GBP").
+
+.PARAMETER locationId
+    (Optional) The ID of the location to assign the pricing model to. Either locationId or locationName should be provided.
+
+.PARAMETER locationName
+    (Optional) The name of the location to assign the pricing model to. Either locationId or locationName should be provided.
+
+.PARAMETER description
+    (Optional) A description of the pricing model.
+
+.PARAMETER languageDirectionPricing
+    (Optional) An array of hashtables defining per-language-direction pricing. Each entry should include 
+    sourceLanguage, targetLanguage, and pricing values for match categories.
+
+.PARAMETER additionalCosts
+    (Optional) An array of hashtables defining project-level additional costs.
+
+.EXAMPLE
+    # Example 1: Create a simple pricing model
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    New-PricingModel -accessKey $accessKey -name "Standard Rates" -currencyCode "EUR" -locationId "12345"
+
+.EXAMPLE
+    # Example 2: Create with language direction pricing
+    $langPricing = @(
+        @{
+            sourceLanguage = "en-US"; targetLanguage = "de-DE"
+            new = 0.10; exactMatch = 0.02; contextMatch = 0.01
+            perfectMatch = 0; repetition = 0.02; machineTranslation = 0.06
+            pricingUnit = "words"
+        }
+    )
+    New-PricingModel -accessKey $accessKey -name "DE Rates" -currencyCode "EUR" `
+        -locationId "12345" -languageDirectionPricing $langPricing
+#>
+function New-PricingModel
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $name,
+
+        [Parameter(Mandatory=$true)]
+        [string] $currencyCode,
+
+        [string] $locationId,
+        [string] $locationName,
+        [string] $description,
+        [hashtable[]] $languageDirectionPricing,
+        [hashtable[]] $additionalCosts
+    )
+
+    $uri = "$(Get-LCBaseUri)/pricing-models"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    # Resolve location
+    if ($locationId -or $locationName)
+    {
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+        if ($null -eq $location)
+        {
+            return
+        }
+    }
+
+    $body = [ordered]@{
+        name         = $name
+        currencyCode = $currencyCode
+    }
+
+    if ($description) { $body.description = $description }
+
+    if ($location)
+    {
+        $body.location = $location.Id
+    }
+
+    if ($languageDirectionPricing)
+    {
+        $body.languageDirectionPricing = @($languageDirectionPricing)
+    }
+
+    if ($additionalCosts)
+    {
+        $body.additionalCosts = @($additionalCosts)
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+    Updates an existing pricing model.
+
+.DESCRIPTION
+    The `Update-PricingModel` function modifies the properties of a specified pricing model. You can 
+    update the name, description, currency, language direction pricing, and additional costs.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER pricingModelId
+    (Optional) The ID of the pricing model to update. Either pricingModelId or pricingModelName must be provided.
+
+.PARAMETER pricingModelName
+    (Optional) The name of the pricing model to update. Either pricingModelId or pricingModelName must be provided.
+
+.PARAMETER name
+    (Optional) The updated name for the pricing model.
+
+.PARAMETER description
+    (Optional) The updated description for the pricing model.
+
+.PARAMETER currencyCode
+    (Optional) The updated currency code.
+
+.PARAMETER languageDirectionPricing
+    (Optional) An array of hashtables defining per-language-direction pricing. Replaces current settings.
+
+.PARAMETER additionalCosts
+    (Optional) An array of hashtables defining project-level additional costs. Replaces current settings.
+
+.EXAMPLE
+    # Example: Update a pricing model's currency and description
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-PricingModel -accessKey $accessKey -pricingModelName "Standard Rates" `
+        -currencyCode "GBP" -description "Updated to GBP"
+#>
+function Update-PricingModel
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $pricingModelId,
+        [string] $pricingModelName,
+
+        [string] $name,
+        [string] $description,
+        [string] $currencyCode,
+        [hashtable[]] $languageDirectionPricing,
+        [hashtable[]] $additionalCosts
+    )
+
+    $pricingModel = Get-PricingModel -accessKey $accessKey -pricingModelId $pricingModelId -pricingModelName $pricingModelName
+    if ($null -eq $pricingModel)
+    {
+        return
+    }
+
+    $uri = "$(Get-LCBaseUri)/pricing-models/$($pricingModel.Id)"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{}
+
+    if ($name)         { $body.name = $name }
+    if ($description)  { $body.description = $description }
+    if ($currencyCode) { $body.currencyCode = $currencyCode }
+
+    if ($languageDirectionPricing)
+    {
+        $body.languageDirectionPricing = @($languageDirectionPricing)
+    }
+
+    if ($additionalCosts)
+    {
+        $body.additionalCosts = @($additionalCosts)
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+}
+
+<#
+.SYNOPSIS
+    Removes a pricing model from the system.
+
+.DESCRIPTION
+    The `Remove-PricingModel` function deletes a specified pricing model. The pricing model can be 
+    identified by its ID or name.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER pricingModelId
+    (Optional) The ID of the pricing model to remove. Either pricingModelId or pricingModelName must be provided.
+
+.PARAMETER pricingModelName
+    (Optional) The name of the pricing model to remove. Either pricingModelId or pricingModelName must be provided.
+
+.EXAMPLE
+    # Example: Remove a pricing model by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-PricingModel -accessKey $accessKey -pricingModelName "Old Rates"
+#>
+function Remove-PricingModel
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $pricingModelId,
+        [string] $pricingModelName
+    )
+
+    $pricingModel = Get-PricingModel -accessKey $accessKey -pricingModelId $pricingModelId -pricingModelName $pricingModelName
+    if ($null -eq $pricingModel)
+    {
+        return
+    }
+
+    $uri = "$(Get-LCBaseUri)/pricing-models/$($pricingModel.Id)"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    Invoke-SafeMethod -method {
+        $null = Invoke-RestMethod -Headers $headers -Method Delete -Uri $uri
+        Write-Host "Pricing model removed" -ForegroundColor Green
+    }
+}
+
+#endregion
+
+#region File Analysis
+
+<#
+.SYNOPSIS
+    Requests a word count and cost estimation analysis for uploaded files.
+
+.DESCRIPTION
+    The `Request-FileAnalysis` function triggers an analysis of one or more uploaded files without 
+    creating a project. Returns an operation ID that can be polled with Get-FileAnalysisStatus.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER fileIds
+    (Mandatory) An array of file IDs to analyse. Files must have been previously uploaded.
+
+.PARAMETER sourceLanguage
+    (Mandatory) The source language code (e.g. "en-US").
+
+.PARAMETER languageProcessingRuleId
+    (Mandatory) The ID of the language processing rule to use.
+
+.PARAMETER fileProcessingConfigurationId
+    (Mandatory) The ID of the file processing configuration to use.
+
+.PARAMETER pricingModelId
+    (Optional) The ID of the pricing model to use for cost estimation.
+
+.PARAMETER targetLanguages
+    (Optional) An array of target language codes for cost estimation (e.g. @("de-DE", "fr-FR")).
+
+.EXAMPLE
+    # Example 1: Analyse a file for word count only
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    $result = Request-FileAnalysis -accessKey $accessKey -fileIds @("file-123") `
+        -sourceLanguage "en-US" -languageProcessingRuleId "rule-123" `
+        -fileProcessingConfigurationId "config-123"
+
+.EXAMPLE
+    # Example 2: Analyse with cost estimation
+    $result = Request-FileAnalysis -accessKey $accessKey -fileIds @("file-123", "file-456") `
+        -sourceLanguage "en-US" -languageProcessingRuleId "rule-123" `
+        -fileProcessingConfigurationId "config-123" `
+        -pricingModelId "pricing-123" -targetLanguages @("de-DE", "fr-FR")
+    # Then poll: Get-FileAnalysisStatus -accessKey $accessKey -operationId $result.id
+#>
+function Request-FileAnalysis
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string[]] $fileIds,
+
+        [Parameter(Mandatory=$true)]
+        [string] $sourceLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $languageProcessingRuleId,
+
+        [Parameter(Mandatory=$true)]
+        [string] $fileProcessingConfigurationId,
+
+        [string] $pricingModelId,
+        [string[]] $targetLanguages
+    )
+
+    $uri = "$(Get-LCBaseUri)/files/analysis"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        fileIds                       = @($fileIds)
+        sourceLanguage                = @{ languageCode = $sourceLanguage }
+        languageProcessingRuleId      = $languageProcessingRuleId
+        fileProcessingConfigurationId = $fileProcessingConfigurationId
+    }
+
+    if ($pricingModelId -or $targetLanguages)
+    {
+        $quotingOptions = @{}
+        if ($pricingModelId)  { $quotingOptions.pricingModelId = $pricingModelId }
+        if ($targetLanguages)
+        {
+            $quotingOptions.targetLanguages = @($targetLanguages | ForEach-Object { @{ languageCode = $_ } })
+        }
+        $body.quotingOptions = $quotingOptions
+    }
+
+    $json = $body | ConvertTo-Json -Depth 5
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+    Polls the status of a file analysis operation.
+
+.DESCRIPTION
+    The `Get-FileAnalysisStatus` function checks the status of a previously requested file analysis. 
+    Returns word count, estimated costs, and per-file statistics when complete.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER operationId
+    (Mandatory) The operation ID returned by Request-FileAnalysis.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-FileAnalysisStatus -accessKey $accessKey -operationId "operation-123"
+#>
+function Get-FileAnalysisStatus
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $operationId
+    )
+
+    $uri = "$(Get-LCBaseUri)/files/analysis/$operationId"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
+}
+
+#endregion
+
+#region Zip File Upload
+
+<#
+.SYNOPSIS
+    Uploads a zip archive for file extraction.
+
+.DESCRIPTION
+    The `Send-ZipFile` function uploads a .zip file to the API. The archive is then extracted 
+    server-side. Use Get-ZipFileStatus to poll for completion and retrieve the extracted file IDs.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER filePath
+    (Mandatory) The local path to the .zip file to upload.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    $result = Send-ZipFile -accessKey $accessKey -filePath "C:\files\source-files.zip"
+    # Then poll: Get-ZipFileStatus -accessKey $accessKey -fileId $result.id
+#>
+function Send-ZipFile
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $filePath
+    )
+
+    if (-not (Test-Path $filePath))
+    {
+        Write-Host "File does not exist: $filePath" -ForegroundColor Green
+        return
+    }
+
+    $uri = "$(Get-LCBaseUri)/files"
+
+    # Create headers without Content-Type (multipart sets its own)
+    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+    $headers.Add("X-LC-Tenant", $accessKey.tenant)
+    $headers.Add("Accept", "application/json")
+    $headers.Add("Authorization", $accessKey.token)
+
+    # Create multipart form data
+    $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
+
+    $fileStream = [System.IO.FileStream]::new($filePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read)
+    $fileContent = [System.Net.Http.StreamContent]::new($fileStream)
+
+    $fileHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
+    $fileHeader.Name = "file"
+    $fileHeader.FileName = [System.IO.Path]::GetFileName($filePath)
+    $fileContent.Headers.ContentDisposition = $fileHeader
+
+    $multipartContent.Add($fileContent)
+
+    $response = Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Method Post -Headers $headers -Body $multipartContent }
+
+    # Clean up
+    $fileStream.Dispose()
+
+    if ($response)
+    {
+        Write-Host "Zip file uploaded successfully" -ForegroundColor Green
+        return $response
+    }
+}
+
+<#
+.SYNOPSIS
+    Polls the status of a zip file extraction.
+
+.DESCRIPTION
+    The `Get-ZipFileStatus` function checks the status of a previously uploaded zip file. When 
+    extraction is complete, returns the list of extracted files with their IDs and paths.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER fileId
+    (Mandatory) The file ID returned by Send-ZipFile.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-ZipFileStatus -accessKey $accessKey -fileId "file-123"
+#>
+function Get-ZipFileStatus
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $fileId
+    )
+
+    $uri = "$(Get-LCBaseUri)/files/$fileId"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
+}
+
+#endregion
+
 Export-ModuleMember Get-AllProjectTemplates;
 Export-ModuleMember Get-ProjectTemplate;
 Export-ModuleMember New-ProjectTemplate;
@@ -3593,6 +4394,9 @@ Export-ModuleMember Get-AllWorkflows;
 Export-ModuleMember Get-Workflow;
 Export-ModuleMember Get-AllPricingModels;
 Export-ModuleMember Get-PricingModel;
+Export-ModuleMember New-PricingModel;
+Export-ModuleMember Update-PricingModel;
+Export-ModuleMember Remove-PricingModel;
 Export-ModuleMember Get-AllScheduleTemplates;
 Export-ModuleMember Get-ScheduleTemplate;
 Export-ModuleMember Remove-ScheduleTemplate;
@@ -3617,3 +4421,11 @@ Export-ModuleMember Get-LanguageProcessingRule;
 Export-ModuleMember Get-AllFieldTemplates;
 Export-ModuleMember Get-FieldTemplate;
 Export-ModuleMember Get-LanguagePair;
+Export-ModuleMember Invoke-TranslationLookup;
+Export-ModuleMember Invoke-ConcordanceSearch;
+Export-ModuleMember Add-TranslationUnit;
+Export-ModuleMember Update-TranslationUnit;
+Export-ModuleMember Request-FileAnalysis;
+Export-ModuleMember Get-FileAnalysisStatus;
+Export-ModuleMember Send-ZipFile;
+Export-ModuleMember Get-ZipFileStatus;
