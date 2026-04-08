@@ -365,15 +365,60 @@ function Invoke-SafeMethod
     }
     catch
     {
-        try
+        $statusCode = $null
+        $responseBody = $null
+
+        # Extract HTTP status code if available
+        if ($_.Exception.Response)
         {
-            $response = ConvertFrom-Json $_
-            Write-Host $response.Message -ForegroundColor Green
+            $statusCode = [int]$_.Exception.Response.StatusCode
         }
-        catch
+
+        # ErrorDetails.Message contains the raw API response body on 4xx/5xx errors
+        if ($_.ErrorDetails -and $_.ErrorDetails.Message)
         {
-            Write-Host "Error: $_" -ForegroundColor Red
+            $responseBody = $_.ErrorDetails.Message
         }
+
+        # Build a detailed error output
+        if ($responseBody)
+        {
+            try
+            {
+                $parsed = ConvertFrom-Json $responseBody
+                if ($statusCode)
+                {
+                    Write-Host "API Error (HTTP $statusCode):" -ForegroundColor Red
+                }
+                # Output the full parsed response so field-level validation errors are visible
+                Write-Host ($parsed | ConvertTo-Json -Depth 10) -ForegroundColor Red
+            }
+            catch
+            {
+                # Response body wasn't valid JSON - output it raw
+                if ($statusCode)
+                {
+                    Write-Host "API Error (HTTP $statusCode): $responseBody" -ForegroundColor Red
+                }
+                else
+                {
+                    Write-Host "API Error: $responseBody" -ForegroundColor Red
+                }
+            }
+        }
+        else
+        {
+            # No response body available - fall back to exception message
+            if ($statusCode)
+            {
+                Write-Host "Error (HTTP $statusCode): $_" -ForegroundColor Red
+            }
+            else
+            {
+                Write-Host "Error: $_" -ForegroundColor Red
+            }
+        }
+
         return $null
     }
 }
