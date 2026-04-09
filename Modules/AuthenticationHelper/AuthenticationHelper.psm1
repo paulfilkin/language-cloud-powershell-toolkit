@@ -7,37 +7,58 @@ The `Get-AccessKey` function sends a request to the specified authentication end
 (also known as a bearer token) that is required to access other resources. This function returns a PowerShell 
 object containing the bearer token and tenant information, which can be used in subsequent API requests.
 
+Optionally, you can provide a custom API base URI via the `baseUri` parameter. If not provided, the toolkit 
+defaults to "https://lc-api.sdl.com/public-api/v1". The recommended URI for new integrations is 
+"https://api.eu.cloud.trados.com/public-api/v1".
+
 .PARAMETER id
 The client ID required for authentication. This is typically provided by your authentication service.
 
 .PARAMETER secret
-The client secret corresponding to the client ID. This is used to authenticate and authorize the client.
+The client secret corresponding to the client ID. This is used to authenticate and authorise the client.
 
 .PARAMETER lcTenant
-The tenant identifier for your organization or resource group. This value is returned as part of the access key object.
+The tenant identifier for your organisation or resource group. This value is returned as part of the access key object.
+
+.PARAMETER baseUri
+(Optional) The base URI for the Language Cloud API. Defaults to "https://lc-api.sdl.com/public-api/v1".
+Use "https://api.eu.cloud.trados.com/public-api/v1" for the new recommended endpoint.
 
 .EXAMPLE
 $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
-This example retrieves an access key using the provided client ID, secret, and tenant identifier, and stores it in the `$accessKey` variable.
+This example retrieves an access key using the default API endpoint.
+
+.EXAMPLE
+$accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant" -baseUri "https://api.eu.cloud.trados.com/public-api/v1"
+This example retrieves an access key and configures the toolkit to use the new API endpoint.
 
 .OUTPUTS
 PSObject
 Returns a PowerShell object with the following properties:
-- `token`: The bearer token string used for authorization in subsequent API calls.
+- `token`: The bearer token string used for authorisation in subsequent API calls.
 - `tenant`: The tenant identifier passed as a parameter to the function.
 
 .NOTES
 The function uses the `Invoke-RestMethod` cmdlet to send a POST request to the specified authentication endpoint. 
 In case of any errors during the request, the function will catch the exception and output the error message to the console.
 
+If a `baseUri` is provided, it is applied to the CommonHelper module via Set-BaseUri so that all subsequent 
+API calls in the session use the specified endpoint.
 #>
 function Get-AccessKey
 {
     param (
         [String] $id, 
         [String] $secret,
-        [String] $lcTenant
+        [String] $lcTenant,
+        [String] $baseUri
     )
+
+    # If a custom base URI was provided, apply it to the shared CommonHelper module
+    if ($baseUri)
+    {
+        Set-BaseUri -uri $baseUri
+    }
 
     # Define the token file path in the same directory as the script
     $tokenFile = Join-Path -Path $PSScriptRoot -ChildPath "accessToken.json"
@@ -114,4 +135,4 @@ function Get-AccessKey
     }
 }
 
-Export-ModuleMember Get-AccessKey;
+Export-ModuleMember Get-AccessKey

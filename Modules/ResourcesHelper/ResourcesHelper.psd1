@@ -3,7 +3,7 @@
     ModuleToProcess = 'ResourcesHelper.psm1'
     
     # Version number of this module.
-    ModuleVersion = '1.0.0.0'
+    ModuleVersion = '1.2.0.0'
     
     # ID used to uniquely identify this module
     GUID = '{49736F81-E71A-46DE-9F38-D493346F5F4F}'
@@ -15,10 +15,10 @@
     CompanyName = 'SDL Limited as part of the RWS Holdings Plc group of companies'
     
     # Copyright statement for this module
-    Copyright = '© 2011 - 2022 SDL Limited as part of the RWS Holdings Plc group of companies (\"RWS Group\").'
+    Copyright = '© 2011 - 2026 SDL Limited as part of the RWS Holdings Plc group of companies (\"RWS Group\").'
     
     # Description of the functionality provided by this module
-    Description = 'A PowerShell module to list resources from the Language Cloud'
+    Description = 'A PowerShell module to manage resources in Language Cloud. Includes project templates, translation memories, customers, pricing models, translation unit operations, file analysis, zip file uploads, translation engine updates, workflow updates, and LLM configuration listing.'
     
     # Minimum version of the Windows PowerShell engine required by this module
     PowerShellVersion = '7.4'
@@ -34,7 +34,7 @@
     
     # Modules that must be imported into the global environment prior to importing
     # this module
-    RequiredModules = @()
+    RequiredModules = @('CommonHelper')
     
     # Assemblies that must be loaded prior to importing this module
     RequiredAssemblies = @()

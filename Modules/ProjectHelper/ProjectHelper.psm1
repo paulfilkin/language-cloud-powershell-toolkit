@@ -1,4 +1,10 @@
-$baseUri = "https://lc-api.sdl.com/public-api/v1"
+Import-Module -Name CommonHelper
+
+# Dynamic base URI resolution from CommonHelper
+function script:Get-LCBaseUri
+{
+    return Get-BaseUri
+}
 
 <#
 .SYNOPSIS
@@ -319,7 +325,7 @@ function Get-AllProjects {
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/projects" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/projects" `
                          -location $location -fields "fields=id,name" `
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -369,7 +375,7 @@ function Get-Project
         [string] $projectName
     )
 
-    return Get-ProjectItem -accessKey $accessKey -uri "$baseUri/projects" -id $projectId -name $projectName `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/projects" -id $projectId -name $projectName `
         -uriQuery "?fields=id,name" `
         -propertyName "Project"
 }
@@ -387,7 +393,7 @@ function Start-Project
     $headers.Add("Authorization", $accessKey.token)
 
     return Invoke-SafeMethod -method {
-        Invoke-RestMethod -Uri "https://lc-api.sdl.com/public-api/v1/projects/$projectId/start" -Method Put     -Headers $headers
+        Invoke-RestMethod -Uri "$(Get-LCBaseUri)/projects/$projectId/start" -Method Put     -Headers $headers
     }
 }
 
@@ -427,7 +433,7 @@ function Add-File
     $body = $multipartContent
     
     Invoke-SafeMethod {
-        $null = Invoke-RestMethod "https://lc-api.sdl.com/public-api/v1/projects/$projectId/source-files" -Method 'POST' -Headers $headers -Body $body
+        $null = Invoke-RestMethod "$(Get-LCBaseUri)/projects/$projectId/source-files" -Method 'POST' -Headers $headers -Body $body
         Write-Host "File [" $file.Name "] added" -ForegroundColor Green
     }
 }
@@ -840,247 +846,640 @@ function Get-ProjectCreationRequest
     $headers.Add("Authorization", $accessKey.token)
 
     return Invoke-SafeMethod {
-        Invoke-RestMethod 'https://lc-api.sdl.com/public-api/v1/projects' -Method 'POST' -Headers $headers -Body $json;
+        Invoke-RestMethod "$(Get-LCBaseUri)/projects" -Method 'POST' -Headers $headers -Body $json;
     }
 }
 
-function Get-LanguageDirections 
-{
-    param (
-        [String] $sourceLanguage,
-        [String[]] $targetLanguages
-    )
+#region Export Project Files
 
-    $result = @()
+<#
+.SYNOPSIS
+    Triggers an export of project target files as a ZIP archive.
 
-    foreach ($language in $targetLanguages)
-    {
-        $sourceLanguageObject = @{"languageCode" = $sourceLanguage}
-        $targetLanguageObject = @{"languageCode" = $language}
+.DESCRIPTION
+    The `Export-ProjectFiles` function initiates an export of target files from a project. You can 
+    optionally include reference files, filter by target languages, and choose which file versions 
+    to include. Returns an export ID to poll with Get-ProjectFilesExportStatus.
 
-        $result += @{
-            "sourceLanguage" = $sourceLanguageObject
-            "targetLanguage" = $targetLanguageObject
-        }
-    }
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
 
-    return $result;
-}
+.PARAMETER projectId
+    (Mandatory) The ID of the project to export files from.
 
-function Get-LanguageDirections 
-{
-    param (
-        [String[]] $sourceLanguage,
-        [String[]] $targetLanguages
-    )
+.PARAMETER includeReferenceFiles
+    (Optional) Whether to include reference files in the export. Default is $false.
 
-    $languageDirections = @();
-    if ($sourceLanguage -and $targetLanguages)
-    {
-        foreach ($target in $targetLanguages)
-        {
-    
-            $languageDirection = [ordered]@{
-                sourceLanguage = [ordered]@{languageCode = "$sourceLanguage"}
-                targetLanguage = [ordered]@{languageCode = "$target"}
-            }
-            
-            $languageDirections += $languageDirection;
-        }
-    
-    }
+.PARAMETER includeVersions
+    (Optional) Which target file versions to include. Default is "currentVersion".
 
-    return $languageDirections;
-}
+.PARAMETER targetLanguages
+    (Optional) An array of target language codes to filter the export (e.g. @("de-DE", "fr-FR")). 
+    If not specified, all target languages are included.
 
-function Invoke-SafeMethod 
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [scriptblock] $method
-    )
+.PARAMETER downloadFlat
+    (Optional) Whether to flatten the folder structure in the ZIP. Default is $false.
 
-    try {
-        return & $Method
-    } catch {
-        return $_;
-        $response = ConvertFrom-Json $_;
-        Write-Host $response.Message -ForegroundColor Green;
-        return $null
-    }
+.EXAMPLE
+    # Example 1: Export all target files
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    $export = Export-ProjectFiles -accessKey $accessKey -projectId "project-123"
 
-}
-
-function Get-ProjectItem 
+.EXAMPLE
+    # Example 2: Export specific languages with reference files
+    $export = Export-ProjectFiles -accessKey $accessKey -projectId "project-123" `
+        -includeReferenceFiles $true -targetLanguages @("de-DE", "fr-FR")
+    # Then poll: Get-ProjectFilesExportStatus -accessKey $accessKey -projectId "project-123" -exportId $export.exportId
+    # Then download: Save-ProjectFiles -accessKey $accessKey -projectId "project-123" -exportId $export.exportId -outputPath "C:\exports\files.zip"
+#>
+function Export-ProjectFiles
 {
     param (
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
 
         [Parameter(Mandatory=$true)]
-        [String] $uri,
+        [string] $projectId,
 
-        [String] $uriQuery,
-        [String] $id,
-        [string] $name,
-        [string] $propertyName
+        [bool] $includeReferenceFiles = $false,
+        [string] $includeVersions = "currentVersion",
+        [string[]] $targetLanguages,
+        [bool] $downloadFlat = $false
     )
 
-    if ($id)
-    {
-        $uri += "/$id/$uriQuery"
-        $headers = Get-RequestHeader -accessKey $accessKey;
+    $uri = "$(Get-LCBaseUri)/projects/$projectId/files/exports"
+    $headers = Get-RequestHeader -accessKey $accessKey
 
-        $item = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers }
-    }
-    elseif ($name)
-    {
-        $items = Get-AllItems -accessKey $accessKey -uri $($uri + $uriQuery);
-        if ($items)
-        {
-            $item = $items | Where-Object {$_.Name -eq $name } | Select-Object -First 1;
+    $body = [ordered]@{
+        referenceFiles = @{
+            include = $includeReferenceFiles
         }
-
-        if ($null -eq $item)
-        {
-            Write-Host "$propertyName could not be found" -ForegroundColor Green;
+        targetFiles = [ordered]@{
+            includeVersions = $includeVersions
+            downloadFlat    = $downloadFlat
         }
     }
 
-    if ($item)
+    if ($targetLanguages)
     {
-        return $item;
+        $body.targetFiles.targetLanguages = @($targetLanguages)
     }
+
+    $json = $body | ConvertTo-Json -Depth 5
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
 }
 
-function Get-AllItems
+<#
+.SYNOPSIS
+    Polls the status of a project files export operation.
+
+.DESCRIPTION
+    The `Get-ProjectFilesExportStatus` function checks the status of a previously requested file 
+    export. When the state is "completed", use Save-ProjectFiles to download the ZIP.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER projectId
+    (Mandatory) The ID of the project.
+
+.PARAMETER exportId
+    (Mandatory) The export ID returned by Export-ProjectFiles.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-ProjectFilesExportStatus -accessKey $accessKey -projectId "project-123" -exportId "export-456"
+#>
+function Get-ProjectFilesExportStatus
 {
     param (
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
-        [String] $uri)
 
-    $headers = Get-RequestHeader -accessKey $accessKey;
+        [Parameter(Mandatory=$true)]
+        [string] $projectId,
 
-    $response = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers}
-    if ($response)
-    {
-        return $response.Items;
-    }
+        [Parameter(Mandatory=$true)]
+        [string] $exportId
+    )
+
+    $uri = "$(Get-LCBaseUri)/projects/$projectId/files/exports/$exportId"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
 }
 
-function Get-FilterString 
+<#
+.SYNOPSIS
+    Downloads exported project files as a ZIP archive.
+
+.DESCRIPTION
+    The `Save-ProjectFiles` function downloads the ZIP file produced by a completed export operation. 
+    Poll with Get-ProjectFilesExportStatus until the state is "completed" before calling this function.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER projectId
+    (Mandatory) The ID of the project.
+
+.PARAMETER exportId
+    (Mandatory) The export ID returned by Export-ProjectFiles.
+
+.PARAMETER outputPath
+    (Mandatory) The local file path where the ZIP should be saved (e.g. "C:\exports\files.zip").
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Save-ProjectFiles -accessKey $accessKey -projectId "project-123" -exportId "export-456" `
+        -outputPath "C:\exports\target-files.zip"
+#>
+function Save-ProjectFiles
 {
     param (
         [Parameter(Mandatory=$true)]
-        [String[]] $propertyNames,
+        [psobject] $accessKey,
 
         [Parameter(Mandatory=$true)]
-        [String[]] $propertyValues
-    )
+        [string] $projectId,
 
-    return "";
-
-    if ($propertyNames -and $propertyValues)
-    {
-        $elements = @();
-        for ($i = 0; $i -lt $propertyName.Count; $i++)
-        {
-            $element = $propertyNames[$i] + "=" + $propertyValues[$i]
-            $elements += $element;
-        }
-    
-        $output = $elements -join "&"
-        return $output;        
-    }
-}
-
-function Get-LocationStrategy 
-{
-    param (
         [Parameter(Mandatory=$true)]
-        [Bool] $includeSubFolders
-    )
+        [string] $exportId,
 
-    if ($includeSubFolders)
-    {
-        return "lineage"
-    }
-
-    return "location"
-}
-
-function Get-RequestHeader
-{
-    param (
         [Parameter(Mandatory=$true)]
-        [psobject] $accessKey
+        [string] $outputPath
     )
+
+    $uri = "$(Get-LCBaseUri)/projects/$projectId/files/exports/$exportId/download"
+
     $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
     $headers.Add("X-LC-Tenant", $accessKey.tenant)
-    $headers.Add("Accept", "application/json")
-    $headers.Add("Content-Type", "application/json")
+    $headers.Add("Accept", "application/octet-stream")
     $headers.Add("Authorization", $accessKey.token)
 
-    return $headers;
+    return Invoke-SafeMethod {
+        Invoke-RestMethod -Uri $uri -Headers $headers -OutFile $outputPath
+        Write-Host "Project files saved to $outputPath" -ForegroundColor Green
+    }
 }
 
-function Get-StringUri 
+#endregion
+
+#region Reschedule Tasks
+
+<#
+.SYNOPSIS
+    Reschedules the deadlines for workflow tasks in a project.
+
+.DESCRIPTION
+    The `Set-TaskDeadlines` function updates the due date for one or more workflow tasks within a project.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER projectId
+    (Mandatory) The ID of the project containing the tasks.
+
+.PARAMETER dueBy
+    (Mandatory) The new deadline as an ISO 8601 datetime string (e.g. "2026-06-01T12:00:00Z").
+
+.PARAMETER taskIds
+    (Mandatory) An array of task IDs to reschedule.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Set-TaskDeadlines -accessKey $accessKey -projectId "project-123" `
+        -dueBy "2026-06-01T12:00:00Z" -taskIds @("task-1", "task-2")
+#>
+function Set-TaskDeadlines
 {
     param (
-        [String] $root,
-        [String] $name,
-        [psobject] $location,
-        [string] $locationStrategy,
-        [string] $sort,
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $projectId,
+
+        [Parameter(Mandatory=$true)]
+        [string] $dueBy,
+
+        [Parameter(Mandatory=$true)]
+        [string[]] $taskIds
+    )
+
+    $uri = "$(Get-LCBaseUri)/projects/$projectId/tasks/reschedule"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        dueBy   = $dueBy
+        taskIds = @($taskIds)
+    }
+
+    $json = $body | ConvertTo-Json -Depth 5
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Patch }
+}
+
+#endregion
+
+#region Task Operations
+
+<#
+.SYNOPSIS
+    Retrieves a specific task by its ID.
+
+.DESCRIPTION
+    The `Get-Task` function retrieves the details of a single workflow task using its unique identifier.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER taskId
+    (Mandatory) The unique identifier of the task to retrieve.
+
+.PARAMETER fields
+    (Optional) A comma-separated list of fields to include in the response. When omitted, default 
+    fields are returned. Supports top-level property names and nested properties in the form 
+    "topLevel.subProperty".
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-Task -accessKey $accessKey -taskId "df680285-adcd-4bda-8f79-0bba4a857287"
+
+.EXAMPLE
+    # Retrieve specific fields only
+    Get-Task -accessKey $accessKey -taskId "task-123" -fields "id,status,taskType,input.type"
+#>
+function Get-Task
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $taskId,
+
         [string] $fields
     )
 
-    $filter = Get-FilterString -name $name -location $location -locationStrategy $locationStrategy -sort $sort
-    if ($filter -and $fields)
+    $uri = "$(Get-LCBaseUri)/tasks/$taskId"
+    if ($fields)
     {
-        return $root + "?" + $filter + "&" + $($fields);
+        $uri += "?fields=$fields"
     }
-    elseif ($filter)
-    {
-        return $root + "?" + $filter
-    }
-    elseif ($fields)
-    {
-        return $root + "?" + $fields
-    }
-    else 
-    {
-        return $root;
-    }
+
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
 }
 
-function Get-FilterString {
+<#
+.SYNOPSIS
+    Lists all tasks assigned to the authenticated user.
+
+.DESCRIPTION
+    The `Get-AssignedTasks` function retrieves workflow tasks assigned to the current user. 
+    Supports filtering by status and location, pagination via skip/top, sorting, and field 
+    selection.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER fields
+    (Optional) A comma-separated list of fields to include in the response.
+
+.PARAMETER status
+    (Optional) Filter tasks by status. Allowed values: created, inProgress, completed, failed, 
+    skipped, canceled.
+
+.PARAMETER location
+    (Optional) An array of location identifiers to filter by.
+
+.PARAMETER locationStrategy
+    (Optional) Controls how the location filter behaves. Allowed values: location (default), 
+    lineage, bloodline, genealogy.
+
+.PARAMETER skip
+    (Optional) The number of items to skip for pagination. Default is 0.
+
+.PARAMETER top
+    (Optional) The number of items to return per page. Range 1-100, default is 100.
+
+.PARAMETER sort
+    (Optional) A comma-separated list of fields to sort by. Prefix with "-" for descending order.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AssignedTasks -accessKey $accessKey
+
+.EXAMPLE
+    # Get in-progress tasks with specific fields, sorted by due date
+    Get-AssignedTasks -accessKey $accessKey -status "inProgress" `
+        -fields "id,status,taskType,dueBy" -sort "dueBy"
+
+.EXAMPLE
+    # Paginate through results
+    Get-AssignedTasks -accessKey $accessKey -skip 0 -top 50
+#>
+function Get-AssignedTasks
+{
     param (
-        [string] $name,
-        [psobject] $location,
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $fields,
+        [string] $status,
+        [string[]] $location,
         [string] $locationStrategy,
+        [int] $skip,
+        [int] $top,
         [string] $sort
     )
 
-    # Initialize an empty array for filters
-    $filter = @()
-    
-    # Check if the parameters are not null or empty, and add them to the filter array
-    if (-not [string]::IsNullOrEmpty($name)) {
-        $filter += "name=$name"
-    }
-    if ($location -and $(-not [string]::IsNullOrEmpty($locationStrategy))) 
+    $uri = "$(Get-LCBaseUri)/tasks/assigned"
+    $queryParts = @()
+
+    if ($fields)           { $queryParts += "fields=$fields" }
+    if ($status)           { $queryParts += "status=$status" }
+    if ($location)         { foreach ($loc in $location) { $queryParts += "location=$loc" } }
+    if ($locationStrategy) { $queryParts += "locationStrategy=$locationStrategy" }
+    if ($PSBoundParameters.ContainsKey('skip')) { $queryParts += "skip=$skip" }
+    if ($PSBoundParameters.ContainsKey('top'))  { $queryParts += "top=$top" }
+    if ($sort)             { $queryParts += "sort=$sort" }
+
+    if ($queryParts.Count -gt 0)
     {
-        $filter += "location=$($location.Id)&locationStrategy=$locationStrategy"
-    }
-    if (-not [string]::IsNullOrEmpty($sort)) {
-        $filter += "sort=$sort"
+        $uri += "?" + ($queryParts -join "&")
     }
 
-    # Return the filter string by joining with "&"
-    return $filter -join '&'
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
 }
+
+<#
+.SYNOPSIS
+    Accepts a task, making the current user the task owner.
+
+.DESCRIPTION
+    The `Submit-AcceptTask` function accepts a task that has been assigned to the current user. 
+    Once accepted, the task status changes to inProgress and the applicable outcomes become available.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER taskId
+    (Mandatory) The unique identifier of the task to accept.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Submit-AcceptTask -accessKey $accessKey -taskId "task-123"
+#>
+function Submit-AcceptTask
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $taskId
+    )
+
+    $uri = "$(Get-LCBaseUri)/tasks/$taskId/accept"
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Put }
+}
+
+<#
+.SYNOPSIS
+    Rejects a task, returning it to the pool for other assignees.
+
+.DESCRIPTION
+    The `Submit-RejectTask` function rejects a task that has been assigned to or accepted by the 
+    current user. The task is returned to the pool so that other assignees can accept it.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER taskId
+    (Mandatory) The unique identifier of the task to reject.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Submit-RejectTask -accessKey $accessKey -taskId "task-123"
+#>
+function Submit-RejectTask
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $taskId
+    )
+
+    $uri = "$(Get-LCBaseUri)/tasks/$taskId/reject"
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Put }
+}
+
+<#
+.SYNOPSIS
+    Completes a task with an optional outcome and comment.
+
+.DESCRIPTION
+    The `Submit-CompleteTask` function marks a task as completed. An outcome can be specified to 
+    indicate the result of the task (matching one of the task type's applicable outcomes). An 
+    optional comment can be provided.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER taskId
+    (Mandatory) The unique identifier of the task to complete.
+
+.PARAMETER outcome
+    (Optional) The outcome to apply when completing the task. Should match one of the task's 
+    applicable outcomes.
+
+.PARAMETER comment
+    (Optional) A comment to associate with the task completion.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Submit-CompleteTask -accessKey $accessKey -taskId "task-123"
+
+.EXAMPLE
+    # Complete with a specific outcome and comment
+    Submit-CompleteTask -accessKey $accessKey -taskId "task-123" `
+        -outcome "done" -comment "Translation complete, all segments confirmed."
+#>
+function Submit-CompleteTask
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $taskId,
+
+        [string] $outcome,
+        [string] $comment
+    )
+
+    $uri = "$(Get-LCBaseUri)/tasks/$taskId/complete"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{}
+    if ($outcome) { $body.outcome = $outcome }
+    if ($comment) { $body.comment = $comment }
+
+    if ($body.Count -gt 0)
+    {
+        $json = $body | ConvertTo-Json -Depth 5
+        return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+    }
+    else
+    {
+        return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Put }
+    }
+}
+
+<#
+.SYNOPSIS
+    Releases a task from its current owner back to the pool.
+
+.DESCRIPTION
+    The `Submit-ReleaseTask` function releases a task from its owner so that other assignees 
+    can accept it. The task is not reassigned automatically.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER taskId
+    (Mandatory) The unique identifier of the task to release.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Submit-ReleaseTask -accessKey $accessKey -taskId "task-123"
+#>
+function Submit-ReleaseTask
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $taskId
+    )
+
+    $uri = "$(Get-LCBaseUri)/tasks/$taskId/release"
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Put }
+}
+
+<#
+.SYNOPSIS
+    Reclaims a task, removing the current owner so other assignees can accept it.
+
+.DESCRIPTION
+    The `Submit-ReclaimTask` function removes the current owner from a task. The task is not 
+    reassigned automatically - other assignees will be able to accept it.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER taskId
+    (Mandatory) The unique identifier of the task to reclaim.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Submit-ReclaimTask -accessKey $accessKey -taskId "task-123"
+#>
+function Submit-ReclaimTask
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $taskId
+    )
+
+    $uri = "$(Get-LCBaseUri)/tasks/$taskId/reclaim"
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Put }
+}
+
+<#
+.SYNOPSIS
+    Assigns a task to one or more users or groups.
+
+.DESCRIPTION
+    The `Set-TaskAssignment` function assigns a task to one or more users or groups by providing 
+    an array of assignee objects. Each assignee must have an "id" and a "type" (e.g. "user" or 
+    "group").
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER taskId
+    (Mandatory) The unique identifier of the task to assign.
+
+.PARAMETER assignees
+    (Mandatory) An array of hashtables, each containing "id" and "type" keys. The type should be 
+    "user" or "group".
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    $assignees = @(
+        @{ id = "user-abc-123"; type = "user" }
+    )
+    Set-TaskAssignment -accessKey $accessKey -taskId "task-123" -assignees $assignees
+
+.EXAMPLE
+    # Assign to multiple users and a group
+    $assignees = @(
+        @{ id = "user-abc-123"; type = "user" },
+        @{ id = "group-def-456"; type = "group" }
+    )
+    Set-TaskAssignment -accessKey $accessKey -taskId "task-123" -assignees $assignees
+#>
+function Set-TaskAssignment
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $taskId,
+
+        [Parameter(Mandatory=$true)]
+        [array] $assignees
+    )
+
+    $uri = "$(Get-LCBaseUri)/tasks/$taskId/assign"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        assignees = @($assignees)
+    }
+
+    $json = $body | ConvertTo-Json -Depth 5
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+}
+
+#endregion
 
 Export-ModuleMember New-Project;
 Export-ModuleMember Get-AllProjects;
 Export-ModuleMember Get-Project;
+Export-ModuleMember Export-ProjectFiles;
+Export-ModuleMember Get-ProjectFilesExportStatus;
+Export-ModuleMember Save-ProjectFiles;
+Export-ModuleMember Set-TaskDeadlines;
+Export-ModuleMember Get-Task;
+Export-ModuleMember Get-AssignedTasks;
+Export-ModuleMember Submit-AcceptTask;
+Export-ModuleMember Submit-RejectTask;
+Export-ModuleMember Submit-CompleteTask;
+Export-ModuleMember Submit-ReleaseTask;
+Export-ModuleMember Submit-ReclaimTask;
+Export-ModuleMember Set-TaskAssignment;

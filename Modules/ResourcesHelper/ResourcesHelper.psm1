@@ -1,4 +1,11 @@
-$baseUri = "https://lc-api.sdl.com/public-api/v1"
+Import-Module -Name CommonHelper
+
+# Dynamic base URI resolution - always reads the current value from CommonHelper
+# This ensures any calls to Set-BaseUri are respected
+function script:Get-LCBaseUri
+{
+    return Get-BaseUri
+}
 
 <#
 .SYNOPSIS
@@ -68,7 +75,7 @@ function Get-AllProjectTemplates
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName;
     }
 
-    $uri = Get-StringUri -root "$baseUri/project-templates" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/project-templates" `
                          -name $name -location $location `
                          -locationStrategy $locationStrategy `
                          -fields "&fields=id,name,description,languageDirections,location"
@@ -119,7 +126,7 @@ function Get-ProjectTemplate
         [String] $projectTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/project-templates" -uriQuery "?fields=id,name,description,languageDirections,location" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/project-templates" -uriQuery "?fields=id,name,description,languageDirections,location" `
                     -id $projectTemplateId -name $projectTemplateName -propertyName "Project template";
 }
 
@@ -292,7 +299,7 @@ function New-ProjectTemplate
         [string] $description
     )
 
-    $uri = "$baseUri/project-templates"
+    $uri = "$(Get-LCBaseUri)/project-templates"
     $headers = Get-RequestHeader -accessKey $accessKey
     $body = [ordered]@{
         name = $projectTemplateName
@@ -595,7 +602,7 @@ function Remove-ProjectTemplate
 
     if ($projectTemplate)
     {
-        $uri = "$baseUri/project-templates/$($projectTemplate.Id)"
+        $uri = "$(Get-LCBaseUri)/project-templates/$($projectTemplate.Id)"
         $headers = Get-RequestHeader -accessKey $accessKey
         Invoke-SafeMethod { 
                 Invoke-RestMethod -Uri $uri -Headers $headers -Method Delete;
@@ -774,7 +781,7 @@ function Update-ProjectTemplate
     {
         return;
     }
-    $uri = "$baseUri/project-templates/$($template.Id)";
+    $uri = "$(Get-LCBaseUri)/project-templates/$($template.Id)";
     $headers = Get-RequestHeader $accessKey;
 
     $body = @{}
@@ -1094,7 +1101,7 @@ function Get-AllTranslationEngines
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/translation-engines" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/translation-engines" `
                          -location $location -fields "fields=name,description,location,definition"`
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -1144,7 +1151,7 @@ function Get-TranslationEngine
         [String] $translationEngineName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/translation-engines" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-engines" `
          -uriQuery "?fields=name,description,location,definition" -id $translationEngineId `
          -name $translationEngineName -propertyName "Translation engine"
 }
@@ -1217,7 +1224,7 @@ function Get-AllCustomers
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/customers" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/customers" `
                          -location $location -fields "fields=id,name,location"`
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -1267,7 +1274,7 @@ function Get-Customer
         [string] $customerName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/customers" -uriQuery "?fields=id,name,location" -id $customerId -name $customerName -propertyName "Customer";
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/customers" -uriQuery "?fields=id,name,location" -id $customerId -name $customerName -propertyName "Customer";
 }
 
 <#
@@ -1315,7 +1322,7 @@ function Remove-Customer
         [string] $customerName
     )
 
-    $uri = "$baseUri/customers"
+    $uri = "$(Get-LCBaseUri)/customers"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $customer = Get-Customer -accessKey $accessKey -customerId $customerId -customerName $customerName
     if ($customer)
@@ -1391,7 +1398,7 @@ function New-Customer
         [string] $email
     )
     
-    $uri = "$baseUri/customers"
+    $uri = "$(Get-LCBaseUri)/customers"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{
         name = $customerName;
@@ -1505,7 +1512,7 @@ function Update-Customer
         return;
     }
 
-    $uri = "$baseUri/customers/$($customer.Id)";
+    $uri = "$(Get-LCBaseUri)/customers/$($customer.Id)";
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{
         name = $customer.name
@@ -1654,7 +1661,7 @@ function Get-AllFileTypeConfigurations
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/file-processing-configurations" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/file-processing-configurations" `
                         -location $location -fields "fields=id,name,location" `
                         -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -1704,7 +1711,7 @@ function Get-FileTypeConfiguration
         [string] $fileTypeName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/file-processing-configurations" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/file-processing-configurations" `
         -uriQuery "?fields=id,name,location" -id $fileTypeId -name $fileTypeName `
         -propertyName "File processing configuration"
 }
@@ -1776,7 +1783,7 @@ function Get-AllWorkflows
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/workflows" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/workflows" `
                          -location $location -fields "fields=id,name,description,location,workflowTemplate,languageDirections"`
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -1826,7 +1833,7 @@ function Get-Workflow
         [string] $workflowName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/workflows" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/workflows" `
          -uriQuery "?fields=id,name,description,location,workflowTemplate,languageDirections" `
          -id $workflowId -name $workflowName -propertyName "Workflow";
 }
@@ -1893,7 +1900,7 @@ function Get-AllPricingModels
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/pricing-models" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/pricing-models" `
                          -location $location -fields "fields=id,name,description,currencyCode,location,languageDirectionPricing"`
                          -locationStrategy $locationStrategy;
 
@@ -1942,7 +1949,7 @@ function Get-PricingModel {
         [String] $pricingModelName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/pricing-models" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/pricing-models" `
         -uriQuery "?fields=id,name,description,currencyCode,location" -id $pricingModelId -name $pricingModelName `
         -propertyName "Pricing model"
 }
@@ -2009,7 +2016,7 @@ function Get-AllScheduleTemplates
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/schedule-templates" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/schedule-templates" `
                          -location $location -fields "fields=name,description,location" `
                          -locationStrategy $locationStrategy;
 
@@ -2059,7 +2066,7 @@ function Get-ScheduleTemplate
         [string] $scheduleTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/schedule-templates" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/schedule-templates" `
         -uriQuery "?fields=name,description,location" -id $scheduleTemplateId -name $scheduleTemplateName `
         -propertyName "Schedule template"
 }
@@ -2109,7 +2116,7 @@ function Remove-ScheduleTemplate
         [string] $scheduleTemplateName
     )
 
-    $uri = "$baseUri/schedule-templates"
+    $uri = "$(Get-LCBaseUri)/schedule-templates"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $scheduleTemplate = Get-ScheduleTemplate -accessKey $accessKey -scheduleTemplateId $scheduleTemplateId -scheduleTemplateName $scheduleTemplateName
 
@@ -2150,7 +2157,7 @@ function Get-AllLocations
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey
     )
-    return Get-AllItems $accessKey "$baseUri/folders"
+    return Get-AllItems $accessKey "$(Get-LCBaseUri)/folders"
 }
 
 <#
@@ -2196,7 +2203,7 @@ function Get-Location
         [String] $locationName
     )
 
-    return Get-Item -accessKey $accessKey -id $locationId -name $locationName -uri "$baseUri/folders" -propertyName "Folder";
+    return Get-Item -accessKey $accessKey -id $locationId -name $locationName -uri "$(Get-LCBaseUri)/folders" -propertyName "Folder";
 }
 
 <#
@@ -2266,7 +2273,7 @@ function Get-AllCustomFields
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/custom-field-definitions" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/custom-field-definitions" `
                          -location $location -fields "fields=id,name,key,description,defaultValue,type,location,resourceType,isMandatory,pickListOptions" `
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -2316,7 +2323,7 @@ function Get-CustomField
         [String] $customFieldName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/custom-field-definitions" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/custom-field-definitions" `
          -propertyName "Custom field definition" `
          -uriQuery "?fields=id,name,key,description,defaultValue,type,location,resourceType,isMandatory,pickListOptions" `
          -id $customFieldId -name $customFieldName;
@@ -2384,7 +2391,7 @@ function Get-AllTranslationMemories
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/translation-memory" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/translation-memory" `
                          -location $location `
                          -locationStrategy $locationStrategy;
 
@@ -2434,7 +2441,7 @@ function Get-TranslationMemory
         [string] $translationMemoryName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/translation-memory" -id $translationMemoryId -name $translationMemoryName -propertyName "Translation memory";
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-memory" -id $translationMemoryId -name $translationMemoryName -propertyName "Translation memory";
 }
 
 <#
@@ -2534,7 +2541,7 @@ function New-TranslationMemory
     )
 
     # Create the http request basic data
-    $uri = "$baseUri/translation-memory"
+    $uri = "$(Get-LCBaseUri)/translation-memory"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{
         name = $name
@@ -2643,7 +2650,7 @@ function Remove-TranslationMemory
         [String] $translationMemoryName
     )
 
-    $uri = "$baseUri/translation-memory"
+    $uri = "$(Get-LCBaseUri)/translation-memory"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $tm = Get-TranslationMemory -accessKey $accessKey -translationMemoryId $translationMemoryId -translationMemoryName $translationMemoryName;
 
@@ -2863,7 +2870,7 @@ function Copy-TranslationMemory
         return;
     }
 
-    $uri = "$baseUri/translation-memory/$($tm.Id)/copy";
+    $uri = "$(Get-LCBaseUri)/translation-memory/$($tm.Id)/copy";
     $headers = Get-RequestHeader -accessKey $accessKey;
     Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Method Post; }
 }
@@ -2989,7 +2996,7 @@ function Import-TranslationMemory
     }
 
     # Construct the import URI
-    $importUri = "$baseUri/translation-memory/$($tm.Id)/imports";
+    $importUri = "$(Get-LCBaseUri)/translation-memory/$($tm.Id)/imports";
 
     # Prepare the body for the import request
     $importBody = [ordered]@{
@@ -3117,7 +3124,7 @@ function Export-TranslationMemory
         return;
     }
 
-    $uri = "$baseUri/translation-memory/$($tm.Id)/exports"
+    $uri = "$(Get-LCBaseUri)/translation-memory/$($tm.Id)/exports"
     $headers = Get-RequestHeader -accessKey $accessKey;
     $body = [ordered]@{
         languageDirection = @{
@@ -3138,7 +3145,7 @@ function Export-TranslationMemory
         return;
     }
 
-    $pollUri = "$baseUri/translation-memory/exports/$($response.Id)"
+    $pollUri = "$(Get-LCBaseUri)/translation-memory/exports/$($response.Id)"
 
     while ($true)
     {
@@ -3156,7 +3163,7 @@ function Export-TranslationMemory
         }
     }
 
-    $downloadUri = "$baseUri/translation-memory/exports/$($pollResponse.Id)/download"
+    $downloadUri = "$(Get-LCBaseUri)/translation-memory/exports/$($pollResponse.Id)/download"
     $null = Invoke-RestMethod -Uri $downloadUri -Headers $headers -OutFile $outputFilePath;
 }
 
@@ -3227,7 +3234,7 @@ function Get-AllTranslationQualityAssessments
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/tqa-profiles" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/tqa-profiles" `
                          -location $location `
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -3277,7 +3284,7 @@ function Get-TranslationQualityAssessment
         [string] $tqaName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/tqa-profiles" -id $tqaId -name $tqaName -propertyName "Tqa profile";
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/tqa-profiles" -id $tqaId -name $tqaName -propertyName "Tqa profile";
 }
 
 <#
@@ -3342,7 +3349,7 @@ function Get-AllLanguageProcessingRules
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/language-processing-rules" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/language-processing-rules" `
                          -location $location -fields "fields=id,name,description"`
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -3392,7 +3399,7 @@ function Get-LanguageProcessingRule
         [string] $languageProcessingName
     )
 
-    return Get-Item -accessKey $accessKey  -uri "$baseUri/language-processing-rules" `
+    return Get-Item -accessKey $accessKey  -uri "$(Get-LCBaseUri)/language-processing-rules" `
              -uriQuery "?fields=id,name,description" -id $languageProcessingId -name $languageProcessingName `
              -propertyName "Language processing rule"
 }
@@ -3469,7 +3476,7 @@ function Get-AllFieldTemplates
         $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
     }
 
-    $uri = Get-StringUri -root "$baseUri/translation-memory/field-templates" `
+    $uri = Get-StringUri -root "$(Get-LCBaseUri)/translation-memory/field-templates" `
                          -location $location -fields "fields=id,name,description,location"`
                          -locationStrategy $locationStrategy -sort $sortProperty;
 
@@ -3519,7 +3526,7 @@ function Get-FieldTemplate
         [string] $fieldTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/translation-memory/field-templates" -uriQuery "?fields=id,name,description,location" `
+    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-memory/field-templates" -uriQuery "?fields=id,name,description,location" `
                 -id $fieldTemplateId -name $fieldTemplateName -propertyName "Field template";
 }
 
@@ -3570,225 +3577,1030 @@ function Get-LanguagePair {
     return $languageDirections;
 }
 
-function Get-Item 
+#region Translation Unit Operations
+
+<#
+.SYNOPSIS
+    Performs a translation memory lookup for a given text segment.
+
+.DESCRIPTION
+    The `Invoke-TranslationLookup` function searches the translation memories associated with a 
+    translation engine for matches against the provided source text. Returns translation proposals 
+    with match scores.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER content
+    (Mandatory) The source text to look up.
+
+.PARAMETER sourceLanguage
+    (Mandatory) The source language code (e.g. "en-US").
+
+.PARAMETER targetLanguage
+    (Mandatory) The target language code (e.g. "de-DE").
+
+.PARAMETER translationEngineId
+    (Mandatory) The ID of the translation engine whose TMs should be searched.
+
+.PARAMETER contentType
+    (Optional) The content type of the input. Default is "text".
+
+.PARAMETER settings
+    (Optional) A hashtable containing TM lookup settings including minimumMatchValue and penalties.
+
+.EXAMPLE
+    # Example 1: Simple lookup
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Invoke-TranslationLookup -accessKey $accessKey -content "Hello world" `
+        -sourceLanguage "en-US" -targetLanguage "de-DE" -translationEngineId "engine-123"
+
+.EXAMPLE
+    # Example 2: Lookup with custom minimum match value
+    $settings = @{
+        translationMemory = @{
+            minimumMatchValue = 80
+        }
+    }
+    Invoke-TranslationLookup -accessKey $accessKey -content "Hello world" `
+        -sourceLanguage "en-US" -targetLanguage "de-DE" -translationEngineId "engine-123" `
+        -settings $settings
+#>
+function Invoke-TranslationLookup
 {
     param (
         [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
 
         [Parameter(Mandatory=$true)]
-        [String] $uri,
+        [string] $content,
 
-        [String] $uriQuery,
-        [String] $id,
+        [Parameter(Mandatory=$true)]
+        [string] $sourceLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $targetLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $translationEngineId,
+
+        [string] $contentType = "text",
+        [hashtable] $settings
+    )
+
+    $uri = "$(Get-LCBaseUri)/translations/lookup"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        input = [ordered]@{
+            content     = $content
+            contentType = $contentType
+        }
+        languageDirection = [ordered]@{
+            sourceLanguage = @{ languageCode = $sourceLanguage }
+            targetLanguage = @{ languageCode = $targetLanguage }
+        }
+        definition = @{
+            translationEngineId = $translationEngineId
+        }
+    }
+
+    if ($settings)
+    {
+        $body.settings = $settings
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+    Performs a concordance search against translation memories.
+
+.DESCRIPTION
+    The `Invoke-ConcordanceSearch` function searches for occurrences of the provided text within 
+    translation memory segments. Unlike lookup, concordance finds partial matches within stored segments.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER content
+    (Mandatory) The text to search for.
+
+.PARAMETER sourceLanguage
+    (Mandatory) The source language code (e.g. "en-US").
+
+.PARAMETER targetLanguage
+    (Mandatory) The target language code (e.g. "de-DE").
+
+.PARAMETER translationEngineId
+    (Mandatory) The ID of the translation engine whose TMs should be searched.
+
+.PARAMETER targetOnly
+    (Optional) Whether to search only in target segments. Default is $false.
+
+.PARAMETER settings
+    (Optional) A hashtable containing TM search settings including minimumMatchValue and penalties.
+
+.EXAMPLE
+    # Example 1: Simple concordance search
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Invoke-ConcordanceSearch -accessKey $accessKey -content "translation memory" `
+        -sourceLanguage "en-US" -targetLanguage "de-DE" -translationEngineId "engine-123"
+
+.EXAMPLE
+    # Example 2: Search in target segments only
+    Invoke-ConcordanceSearch -accessKey $accessKey -content "Ubersetzungsspeicher" `
+        -sourceLanguage "en-US" -targetLanguage "de-DE" -translationEngineId "engine-123" `
+        -targetOnly $true
+#>
+function Invoke-ConcordanceSearch
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $content,
+
+        [Parameter(Mandatory=$true)]
+        [string] $sourceLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $targetLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $translationEngineId,
+
+        [bool] $targetOnly = $false,
+        [hashtable] $settings
+    )
+
+    $uri = "$(Get-LCBaseUri)/translations/concordance"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        input = @{
+            content = $content
+        }
+        languageDirection = [ordered]@{
+            sourceLanguage = @{ languageCode = $sourceLanguage }
+            targetLanguage = @{ languageCode = $targetLanguage }
+        }
+        definition = @{
+            translationEngineId = $translationEngineId
+        }
+        targetOnly = $targetOnly
+    }
+
+    if ($settings)
+    {
+        $body.settings = $settings
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+    Adds a translation unit to a translation memory.
+
+.DESCRIPTION
+    The `Add-TranslationUnit` function adds a new translation unit (source and target segment pair) 
+    to the translation memories associated with a translation engine.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER content
+    (Mandatory) The translation unit content as a structured string (typically XLIFF or similar format 
+    containing both source and target segments).
+
+.PARAMETER translationEngineId
+    (Mandatory) The ID of the translation engine whose TMs should receive the translation unit.
+
+.PARAMETER settings
+    (Optional) A hashtable containing settings such as field values and ifTargetSegmentsDiffer behaviour.
+    Example: @{ fields = @(@{ name = "Client"; values = @("Acme") }); ifTargetSegmentsDiffer = "addNew" }
+
+.EXAMPLE
+    # Example 1: Add a simple translation unit
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Add-TranslationUnit -accessKey $accessKey -content "<xliff>...</xliff>" -translationEngineId "engine-123"
+
+.EXAMPLE
+    # Example 2: Add with field values and conflict handling
+    $settings = @{
+        fields = @(
+            @{ name = "Client"; values = @("Acme Corp") }
+        )
+        ifTargetSegmentsDiffer = "overwrite"
+    }
+    Add-TranslationUnit -accessKey $accessKey -content "<xliff>...</xliff>" `
+        -translationEngineId "engine-123" -settings $settings
+#>
+function Add-TranslationUnit
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $content,
+
+        [Parameter(Mandatory=$true)]
+        [string] $translationEngineId,
+
+        [hashtable] $settings
+    )
+
+    $uri = "$(Get-LCBaseUri)/translations/translation-unit"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        input = @{
+            content = $content
+        }
+        definition = @{
+            translationEngineId = $translationEngineId
+        }
+    }
+
+    if ($settings)
+    {
+        $body.settings = $settings
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
+}
+
+<#
+.SYNOPSIS
+    Updates an existing translation unit in a translation memory.
+
+.DESCRIPTION
+    The `Update-TranslationUnit` function updates an existing translation unit in the translation 
+    memories associated with a translation engine.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER content
+    (Mandatory) The updated translation unit content.
+
+.PARAMETER translationEngineId
+    (Mandatory) The ID of the translation engine whose TMs contain the translation unit.
+
+.PARAMETER settings
+    (Optional) A hashtable containing settings such as field values.
+    Example: @{ fields = @(@{ name = "Client"; values = @("Acme") }) }
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-TranslationUnit -accessKey $accessKey -content "<xliff>...</xliff>" -translationEngineId "engine-123"
+#>
+function Update-TranslationUnit
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $content,
+
+        [Parameter(Mandatory=$true)]
+        [string] $translationEngineId,
+
+        [hashtable] $settings
+    )
+
+    $uri = "$(Get-LCBaseUri)/translations/translation-unit"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        input = @{
+            content = $content
+        }
+        definition = @{
+            translationEngineId = $translationEngineId
+        }
+    }
+
+    if ($settings)
+    {
+        $body.settings = $settings
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+}
+
+#endregion
+
+#region Pricing Model CRUD
+
+<#
+.SYNOPSIS
+    Creates a new pricing model.
+
+.DESCRIPTION
+    The `New-PricingModel` function creates a new pricing model in the system. Pricing models define 
+    cost structures for translation work including per-language pricing and additional costs.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER name
+    (Mandatory) The name of the pricing model.
+
+.PARAMETER currencyCode
+    (Mandatory) The currency code (e.g. "EUR", "USD", "GBP").
+
+.PARAMETER locationId
+    (Optional) The ID of the location to assign the pricing model to. Either locationId or locationName should be provided.
+
+.PARAMETER locationName
+    (Optional) The name of the location to assign the pricing model to. Either locationId or locationName should be provided.
+
+.PARAMETER description
+    (Optional) A description of the pricing model.
+
+.PARAMETER languageDirectionPricing
+    (Optional) An array of hashtables defining per-language-direction pricing. Each entry should include 
+    sourceLanguage, targetLanguage, and pricing values for match categories.
+
+.PARAMETER additionalCosts
+    (Optional) An array of hashtables defining project-level additional costs.
+
+.EXAMPLE
+    # Example 1: Create a simple pricing model
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    New-PricingModel -accessKey $accessKey -name "Standard Rates" -currencyCode "EUR" -locationId "12345"
+
+.EXAMPLE
+    # Example 2: Create with language direction pricing
+    $langPricing = @(
+        @{
+            sourceLanguage = "en-US"; targetLanguage = "de-DE"
+            new = 0.10; exactMatch = 0.02; contextMatch = 0.01
+            perfectMatch = 0; repetition = 0.02; machineTranslation = 0.06
+            pricingUnit = "words"
+        }
+    )
+    New-PricingModel -accessKey $accessKey -name "DE Rates" -currencyCode "EUR" `
+        -locationId "12345" -languageDirectionPricing $langPricing
+#>
+function New-PricingModel
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
         [string] $name,
-        [string] $propertyName
+
+        [Parameter(Mandatory=$true)]
+        [string] $currencyCode,
+
+        [string] $locationId,
+        [string] $locationName,
+        [string] $description,
+        [hashtable[]] $languageDirectionPricing,
+        [hashtable[]] $additionalCosts
     )
 
-    if ($id)
-    {
-        $uri += "/$id/$uriQuery"
-        $headers = Get-RequestHeader -accessKey $accessKey;
+    $uri = "$(Get-LCBaseUri)/pricing-models"
+    $headers = Get-RequestHeader -accessKey $accessKey
 
-        $item = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers }
-    }
-    elseif ($name)
+    # Resolve location
+    if ($locationId -or $locationName)
     {
-        $items = Get-AllItems -accessKey $accessKey -uri $($uri + $uriQuery);
-        if ($items)
+        $location = Get-Location -accessKey $accessKey -locationId $locationId -locationName $locationName
+        if ($null -eq $location)
         {
-            $item = $items | Where-Object {$_.Name -eq $name } | Select-Object -First 1;
-        }
-
-        if ($null -eq $item)
-        {
-            Write-Host "$propertyName could not be found" -ForegroundColor Green;
+            return
         }
     }
 
-    if ($item)
-    {
-        return $item;
+    $body = [ordered]@{
+        name         = $name
+        currencyCode = $currencyCode
     }
+
+    if ($description) { $body.description = $description }
+
+    if ($location)
+    {
+        $body.location = $location.Id
+    }
+
+    if ($languageDirectionPricing)
+    {
+        $body.languageDirectionPricing = @($languageDirectionPricing)
+    }
+
+    if ($additionalCosts)
+    {
+        $body.additionalCosts = @($additionalCosts)
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
 }
 
-function Get-AllItems
+<#
+.SYNOPSIS
+    Updates an existing pricing model.
+
+.DESCRIPTION
+    The `Update-PricingModel` function modifies the properties of a specified pricing model. You can 
+    update the name, description, currency, language direction pricing, and additional costs.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER pricingModelId
+    (Optional) The ID of the pricing model to update. Either pricingModelId or pricingModelName must be provided.
+
+.PARAMETER pricingModelName
+    (Optional) The name of the pricing model to update. Either pricingModelId or pricingModelName must be provided.
+
+.PARAMETER name
+    (Optional) The updated name for the pricing model.
+
+.PARAMETER description
+    (Optional) The updated description for the pricing model.
+
+.PARAMETER currencyCode
+    (Optional) The updated currency code.
+
+.PARAMETER languageDirectionPricing
+    (Optional) An array of hashtables defining per-language-direction pricing. Replaces current settings.
+
+.PARAMETER additionalCosts
+    (Optional) An array of hashtables defining project-level additional costs. Replaces current settings.
+
+.EXAMPLE
+    # Example: Update a pricing model's currency and description
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-PricingModel -accessKey $accessKey -pricingModelName "Standard Rates" `
+        -currencyCode "GBP" -description "Updated to GBP"
+#>
+function Update-PricingModel
 {
     param (
+        [Parameter(Mandatory=$true)]
         [psobject] $accessKey,
-        [String] $uri)
 
-    $headers = Get-RequestHeader -accessKey $accessKey;
+        [string] $pricingModelId,
+        [string] $pricingModelName,
 
-    $response = Invoke-SafeMethod { Invoke-RestMethod -uri $uri -Headers $headers}
-    if ($response)
+        [string] $name,
+        [string] $description,
+        [string] $currencyCode,
+        [hashtable[]] $languageDirectionPricing,
+        [hashtable[]] $additionalCosts
+    )
+
+    $pricingModel = Get-PricingModel -accessKey $accessKey -pricingModelId $pricingModelId -pricingModelName $pricingModelName
+    if ($null -eq $pricingModel)
     {
-        return $response.Items;
+        return
     }
+
+    $uri = "$(Get-LCBaseUri)/pricing-models/$($pricingModel.Id)"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{}
+
+    if ($name)         { $body.name = $name }
+    if ($description)  { $body.description = $description }
+    if ($currencyCode) { $body.currencyCode = $currencyCode }
+
+    if ($languageDirectionPricing)
+    {
+        $body.languageDirectionPricing = @($languageDirectionPricing)
+    }
+
+    if ($additionalCosts)
+    {
+        $body.additionalCosts = @($additionalCosts)
+    }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
 }
 
-function Get-FilterString 
+<#
+.SYNOPSIS
+    Removes a pricing model from the system.
+
+.DESCRIPTION
+    The `Remove-PricingModel` function deletes a specified pricing model. The pricing model can be 
+    identified by its ID or name.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER pricingModelId
+    (Optional) The ID of the pricing model to remove. Either pricingModelId or pricingModelName must be provided.
+
+.PARAMETER pricingModelName
+    (Optional) The name of the pricing model to remove. Either pricingModelId or pricingModelName must be provided.
+
+.EXAMPLE
+    # Example: Remove a pricing model by name
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Remove-PricingModel -accessKey $accessKey -pricingModelName "Old Rates"
+#>
+function Remove-PricingModel
 {
     param (
         [Parameter(Mandatory=$true)]
-        [String[]] $propertyNames,
+        [psobject] $accessKey,
 
-        [Parameter(Mandatory=$true)]
-        [String[]] $propertyValues
+        [string] $pricingModelId,
+        [string] $pricingModelName
     )
 
-    return "";
-
-    if ($propertyNames -and $propertyValues)
+    $pricingModel = Get-PricingModel -accessKey $accessKey -pricingModelId $pricingModelId -pricingModelName $pricingModelName
+    if ($null -eq $pricingModel)
     {
-        $elements = @();
-        for ($i = 0; $i -lt $propertyName.Count; $i++)
+        return
+    }
+
+    $uri = "$(Get-LCBaseUri)/pricing-models/$($pricingModel.Id)"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    Invoke-SafeMethod -method {
+        $null = Invoke-RestMethod -Headers $headers -Method Delete -Uri $uri
+        Write-Host "Pricing model removed" -ForegroundColor Green
+    }
+}
+
+#endregion
+
+#region File Analysis
+
+<#
+.SYNOPSIS
+    Requests a word count and cost estimation analysis for uploaded files.
+
+.DESCRIPTION
+    The `Request-FileAnalysis` function triggers an analysis of one or more uploaded files without 
+    creating a project. Returns an operation ID that can be polled with Get-FileAnalysisStatus.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER fileIds
+    (Mandatory) An array of file IDs to analyse. Files must have been previously uploaded.
+
+.PARAMETER sourceLanguage
+    (Mandatory) The source language code (e.g. "en-US").
+
+.PARAMETER languageProcessingRuleId
+    (Mandatory) The ID of the language processing rule to use.
+
+.PARAMETER fileProcessingConfigurationId
+    (Mandatory) The ID of the file processing configuration to use.
+
+.PARAMETER pricingModelId
+    (Optional) The ID of the pricing model to use for cost estimation.
+
+.PARAMETER targetLanguages
+    (Optional) An array of target language codes for cost estimation (e.g. @("de-DE", "fr-FR")).
+
+.EXAMPLE
+    # Example 1: Analyse a file for word count only
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    $result = Request-FileAnalysis -accessKey $accessKey -fileIds @("file-123") `
+        -sourceLanguage "en-US" -languageProcessingRuleId "rule-123" `
+        -fileProcessingConfigurationId "config-123"
+
+.EXAMPLE
+    # Example 2: Analyse with cost estimation
+    $result = Request-FileAnalysis -accessKey $accessKey -fileIds @("file-123", "file-456") `
+        -sourceLanguage "en-US" -languageProcessingRuleId "rule-123" `
+        -fileProcessingConfigurationId "config-123" `
+        -pricingModelId "pricing-123" -targetLanguages @("de-DE", "fr-FR")
+    # Then poll: Get-FileAnalysisStatus -accessKey $accessKey -operationId $result.id
+#>
+function Request-FileAnalysis
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string[]] $fileIds,
+
+        [Parameter(Mandatory=$true)]
+        [string] $sourceLanguage,
+
+        [Parameter(Mandatory=$true)]
+        [string] $languageProcessingRuleId,
+
+        [Parameter(Mandatory=$true)]
+        [string] $fileProcessingConfigurationId,
+
+        [string] $pricingModelId,
+        [string[]] $targetLanguages
+    )
+
+    $uri = "$(Get-LCBaseUri)/files/analysis"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{
+        fileIds                       = @($fileIds)
+        sourceLanguage                = @{ languageCode = $sourceLanguage }
+        languageProcessingRuleId      = $languageProcessingRuleId
+        fileProcessingConfigurationId = $fileProcessingConfigurationId
+    }
+
+    if ($pricingModelId -or $targetLanguages)
+    {
+        $quotingOptions = @{}
+        if ($pricingModelId)  { $quotingOptions.pricingModelId = $pricingModelId }
+        if ($targetLanguages)
         {
-            $element = $propertyNames[$i] + "=" + $propertyValues[$i]
-            $elements += $element;
+            $quotingOptions.targetLanguages = @($targetLanguages | ForEach-Object { @{ languageCode = $_ } })
         }
-    
-        $output = $elements -join "&"
-        return $output;        
+        $body.quotingOptions = $quotingOptions
     }
+
+    $json = $body | ConvertTo-Json -Depth 5
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Post }
 }
 
-function Get-LocationStrategy 
+<#
+.SYNOPSIS
+    Polls the status of a file analysis operation.
+
+.DESCRIPTION
+    The `Get-FileAnalysisStatus` function checks the status of a previously requested file analysis. 
+    Returns word count, estimated costs, and per-file statistics when complete.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER operationId
+    (Mandatory) The operation ID returned by Request-FileAnalysis.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-FileAnalysisStatus -accessKey $accessKey -operationId "operation-123"
+#>
+function Get-FileAnalysisStatus
 {
     param (
         [Parameter(Mandatory=$true)]
-        [Bool] $includeSubFolders
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $operationId
     )
 
-    if ($includeSubFolders)
+    $uri = "$(Get-LCBaseUri)/files/analysis/$operationId"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
+}
+
+#endregion
+
+#region Zip File Upload
+
+<#
+.SYNOPSIS
+    Uploads a zip archive for file extraction.
+
+.DESCRIPTION
+    The `Send-ZipFile` function uploads a .zip file to the API. The archive is then extracted 
+    server-side. Use Get-ZipFileStatus to poll for completion and retrieve the extracted file IDs.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER filePath
+    (Mandatory) The local path to the .zip file to upload.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    $result = Send-ZipFile -accessKey $accessKey -filePath "C:\files\source-files.zip"
+    # Then poll: Get-ZipFileStatus -accessKey $accessKey -fileId $result.id
+#>
+function Send-ZipFile
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $filePath
+    )
+
+    if (-not (Test-Path $filePath))
     {
-        return "lineage"
+        Write-Host "File does not exist: $filePath" -ForegroundColor Green
+        return
     }
 
-    return "location"
-}
+    $uri = "$(Get-LCBaseUri)/files"
 
-function Get-RequestHeader
-{
-    param (
-        [Parameter(Mandatory=$true)]
-        [psobject] $accessKey
-    )
+    # Create headers without Content-Type (multipart sets its own)
     $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
     $headers.Add("X-LC-Tenant", $accessKey.tenant)
     $headers.Add("Accept", "application/json")
-    $headers.Add("Content-Type", "application/json")
     $headers.Add("Authorization", $accessKey.token)
 
-    return $headers;
-}
+    # Create multipart form data
+    $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
 
-function Get-StringUri 
-{
-    param (
-        [String] $root,
-        [String] $name,
-        [psobject] $location,
-        [string] $locationStrategy,
-        [string] $sort,
-        [string] $fields
-    )
+    $fileStream = [System.IO.FileStream]::new($filePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read)
+    $fileContent = [System.Net.Http.StreamContent]::new($fileStream)
 
-    $filter = Get-FilterString -name $name -location $location -locationStrategy $locationStrategy -sort $sort
-    if ($filter -and $fields)
+    $fileHeader = [System.Net.Http.Headers.ContentDispositionHeaderValue]::new("form-data")
+    $fileHeader.Name = "file"
+    $fileHeader.FileName = [System.IO.Path]::GetFileName($filePath)
+    $fileContent.Headers.ContentDisposition = $fileHeader
+
+    $multipartContent.Add($fileContent)
+
+    $response = Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Method Post -Headers $headers -Body $multipartContent }
+
+    # Clean up
+    $fileStream.Dispose()
+
+    if ($response)
     {
-        return $root + "?" + $filter + "&" + $($fields);
-    }
-    elseif ($filter)
-    {
-        return $root + "?" + $filter
-    }
-    elseif ($fields)
-    {
-        return $root + "?" + $fields
-    }
-    else 
-    {
-        return $root;
+        Write-Host "Zip file uploaded successfully" -ForegroundColor Green
+        return $response
     }
 }
 
-function Get-FilterString {
-    param (
-        [string] $name,
-        [psobject] $location,
-        [string] $locationStrategy,
-        [string] $sort
-    )
+<#
+.SYNOPSIS
+    Polls the status of a zip file extraction.
 
-    # Initialize an empty array for filters
-    $filter = @()
-    
-    # Check if the parameters are not null or empty, and add them to the filter array
-    if (-not [string]::IsNullOrEmpty($name)) {
-        $filter += "name=$name"
-    }
-    if ($location -and $(-not [string]::IsNullOrEmpty($locationStrategy))) 
-    {
-        $filter += "location=$($location.Id)&locationStrategy=$locationStrategy"
-    }
-    if (-not [string]::IsNullOrEmpty($sort)) {
-        $filter += "sort=$sort"
-    }
+.DESCRIPTION
+    The `Get-ZipFileStatus` function checks the status of a previously uploaded zip file. When 
+    extraction is complete, returns the list of extracted files with their IDs and paths.
 
-    # Return the filter string by joining with "&"
-    return $filter -join '&'
-}
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
 
-function Invoke-SafeMethod 
+.PARAMETER fileId
+    (Mandatory) The file ID returned by Send-ZipFile.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-ZipFileStatus -accessKey $accessKey -fileId "file-123"
+#>
+function Get-ZipFileStatus
 {
     param (
         [Parameter(Mandatory=$true)]
-        [scriptblock] $method
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $fileId
     )
 
-    try {
-        return & $Method
-    } catch {
-        $response = ConvertFrom-Json $_;
-        Write-Host $response.Message -ForegroundColor Green;
-        return $null
-    }
+    $uri = "$(Get-LCBaseUri)/files/$fileId"
+    $headers = Get-RequestHeader -accessKey $accessKey
 
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
 }
 
-function Get-LanguageDirections 
+#endregion
+
+#region Translation Engine Updates
+
+<#
+.SYNOPSIS
+    Updates a translation engine's name, description, and/or definition.
+
+.DESCRIPTION
+    The `Update-TranslationEngine` function updates an existing translation engine by replacing 
+    its name, description, and definition. The definition includes language pair definitions 
+    (with resources and adjacent language pairs), the resource sequence (TM, TB, MT, LLM ordering), 
+    and the adjacent language penalty.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER translationEngineId
+    (Mandatory) The unique identifier of the translation engine to update.
+
+.PARAMETER name
+    (Optional) The new name for the translation engine.
+
+.PARAMETER description
+    (Optional) The new description for the translation engine.
+
+.PARAMETER definition
+    (Optional) A hashtable representing the translation engine definition. This should include:
+    - languageProcessingRuleId (string)
+    - languagePairDefinitions (array of hashtables with languagePair, resources, adjacentLanguagePairs)
+    - sequence (hashtable with tm, tb, mt, llm arrays of resource IDs)
+    - adjacentLanguagePenalty (integer, 0-30)
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-TranslationEngine -accessKey $accessKey -translationEngineId "engine-123" `
+        -name "Updated Engine Name" -description "New description"
+
+.EXAMPLE
+    # Update the full definition including resource sequence
+    $definition = @{
+        languageProcessingRuleId = "rule-abc"
+        languagePairDefinitions = @(
+            @{
+                languagePair = @{ source = "en-US"; target = "de-DE" }
+                resources = @(
+                    @{
+                        id = "tm-123"; type = "TM"; penalty = 0
+                        lookup = $true; concordance = $true; update = $true
+                        generativeTranslation = $false; smartReview = $false
+                    }
+                )
+                adjacentLanguagePairs = @()
+            }
+        )
+        sequence = @{
+            tm = @("tm-123")
+            tb = @("tb-456")
+            mt = @("mt-789")
+            llm = @()
+        }
+        adjacentLanguagePenalty = 0
+    }
+    Update-TranslationEngine -accessKey $accessKey -translationEngineId "engine-123" `
+        -name "My Engine" -definition $definition
+#>
+function Update-TranslationEngine
 {
     param (
-        [String[]] $sourceLanguage,
-        [String[]] $targetLanguages,
-        [psobject[]] $languagePairs
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $translationEngineId,
+
+        [string] $name,
+        [string] $description,
+        [hashtable] $definition
     )
 
-    $languageDirections = @();
-    if ($sourceLanguage -and $targetLanguages)
-    {
-        foreach ($target in $targetLanguages)
-        {
-    
-            $languageDirection = [ordered]@{
-                sourceLanguage = [ordered]@{languageCode = "$sourceLanguage"}
-                targetLanguage = [ordered]@{languageCode = "$target"}
-            }
-            
-            $languageDirections += $languageDirection;
+    $uri = "$(Get-LCBaseUri)/translation-engines/$translationEngineId"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{}
+    if ($name)       { $body.name = $name }
+    if ($description){ $body.description = $description }
+    if ($definition) { $body.definition = $definition }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+}
+
+#endregion
+
+#region Workflow Updates
+
+<#
+.SYNOPSIS
+    Updates a workflow's name, description, and/or task configurations.
+
+.DESCRIPTION
+    The `Update-Workflow` function updates an existing workflow. You can change the name, 
+    description, and task configurations (including assignees, skip settings, and scope per 
+    task template). Returns no content on success (HTTP 204).
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER workflowId
+    (Mandatory) The unique identifier of the workflow to update.
+
+.PARAMETER name
+    (Optional) The new name for the workflow.
+
+.PARAMETER description
+    (Optional) The new description for the workflow.
+
+.PARAMETER taskConfigurations
+    (Optional) An array of hashtables defining the task configurations. Each entry should contain:
+    - taskTemplate: hashtable with "id" (string, required)
+    - isSkipped: boolean (required)
+    - assignees: array of hashtables with "type" and optionally "user", "group", or 
+      "vendorOrderTemplate" (each containing "id")
+    - scope: hashtable with "type" (global/languageDirection) and optionally sourceLanguage, 
+      targetLanguage, or languageDirection
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Update-Workflow -accessKey $accessKey -workflowId "wf-123" `
+        -name "Updated Workflow" -description "New description"
+
+.EXAMPLE
+    # Update task configurations with assignees
+    $taskConfigs = @(
+        @{
+            taskTemplate = @{ id = "tt-abc" }
+            isSkipped = $false
+            assignees = @(
+                @{ type = "user"; user = @{ id = "user-123" } }
+            )
+            scope = @{ type = "global" }
+        },
+        @{
+            taskTemplate = @{ id = "tt-def" }
+            isSkipped = $true
+            assignees = @()
+            scope = @{ type = "global" }
         }
-    
-    }
-    elseif ($languagePairs)
+    )
+    Update-Workflow -accessKey $accessKey -workflowId "wf-123" -taskConfigurations $taskConfigs
+#>
+function Update-Workflow
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [Parameter(Mandatory=$true)]
+        [string] $workflowId,
+
+        [string] $name,
+        [string] $description,
+        [array] $taskConfigurations
+    )
+
+    $uri = "$(Get-LCBaseUri)/workflows/$workflowId"
+    $headers = Get-RequestHeader -accessKey $accessKey
+
+    $body = [ordered]@{}
+    if ($name)               { $body.name = $name }
+    if ($description)        { $body.description = $description }
+    if ($taskConfigurations) { $body.taskConfigurations = @($taskConfigurations) }
+
+    $json = $body | ConvertTo-Json -Depth 10
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers -Body $json -Method Put }
+}
+
+#endregion
+
+#region Connected AI
+
+<#
+.SYNOPSIS
+    Retrieves all LLM configurations for the account.
+
+.DESCRIPTION
+    The `Get-AllLlmConfigurations` function lists all Large Language Model configurations 
+    available in the tenant. Each configuration includes the provider type (azureOpenAI or 
+    awsBedrock), model name, and whether it is the default or active configuration.
+
+.PARAMETER accessKey
+    (Mandatory) The access key object returned by Get-AccessKey.
+
+.PARAMETER fields
+    (Optional) A comma-separated list of fields to include in the response. When omitted, 
+    default fields are returned.
+
+.EXAMPLE
+    $accessKey = Get-AccessKey -id "yourClientID" -secret "yourClientSecret" -lcTenant "yourTenant"
+    Get-AllLlmConfigurations -accessKey $accessKey
+
+.EXAMPLE
+    # Retrieve specific fields only
+    Get-AllLlmConfigurations -accessKey $accessKey -fields "id,model,type,isDefault,isActive"
+#>
+function Get-AllLlmConfigurations
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [psobject] $accessKey,
+
+        [string] $fields
+    )
+
+    $uri = "$(Get-LCBaseUri)/connected-ai/llm-configurations"
+    if ($fields)
     {
-        foreach ($pairs in $languagePairs) {
-            $languageDirections += $pairs;
-        }
+        $uri += "?fields=$fields"
     }
 
-    return $languageDirections;
+    $headers = Get-RequestHeader -accessKey $accessKey
+    return Invoke-SafeMethod { Invoke-RestMethod -Uri $uri -Headers $headers }
 }
+
+#endregion
 
 Export-ModuleMember Get-AllProjectTemplates;
 Export-ModuleMember Get-ProjectTemplate;
@@ -3804,8 +4616,12 @@ Export-ModuleMember Remove-Customer;
 Export-ModuleMember Update-Customer;
 Export-ModuleMember Get-AllWorkflows;
 Export-ModuleMember Get-Workflow;
+Export-ModuleMember Update-Workflow;
 Export-ModuleMember Get-AllPricingModels;
 Export-ModuleMember Get-PricingModel;
+Export-ModuleMember New-PricingModel;
+Export-ModuleMember Update-PricingModel;
+Export-ModuleMember Remove-PricingModel;
 Export-ModuleMember Get-AllScheduleTemplates;
 Export-ModuleMember Get-ScheduleTemplate;
 Export-ModuleMember Remove-ScheduleTemplate;
@@ -3830,3 +4646,13 @@ Export-ModuleMember Get-LanguageProcessingRule;
 Export-ModuleMember Get-AllFieldTemplates;
 Export-ModuleMember Get-FieldTemplate;
 Export-ModuleMember Get-LanguagePair;
+Export-ModuleMember Invoke-TranslationLookup;
+Export-ModuleMember Invoke-ConcordanceSearch;
+Export-ModuleMember Add-TranslationUnit;
+Export-ModuleMember Update-TranslationUnit;
+Export-ModuleMember Request-FileAnalysis;
+Export-ModuleMember Get-FileAnalysisStatus;
+Export-ModuleMember Send-ZipFile;
+Export-ModuleMember Get-ZipFileStatus;
+Export-ModuleMember Update-TranslationEngine;
+Export-ModuleMember Get-AllLlmConfigurations;
