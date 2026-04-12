@@ -60,8 +60,8 @@ function Get-AccessKey
         Set-BaseUri -uri $baseUri
     }
 
-    # Define the token file path in the same directory as the script
-    $tokenFile = Join-Path -Path $PSScriptRoot -ChildPath "accessToken.json"
+    # Cache the token in the system temp folder (not the module directory)
+    $tokenFile = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "lc-toolkit-accessToken.json"
 
     # Check if JSON file exists
     if (Test-Path $tokenFile) {
@@ -74,7 +74,7 @@ function Get-AccessKey
                 -and $tokenData.client_id -eq $id `
                 -and $tokenData.expires_at) {
             $currentTime = Get-Date
-            $tokenExpiration = [datetime]::Parse($tokenData.expires_at)
+            $tokenExpiration = [datetime]::Parse($tokenData.expires_at, [System.Globalization.CultureInfo]::InvariantCulture)
 
             # If token is valid, return it
             if ($currentTime -lt $tokenExpiration) {
@@ -117,7 +117,7 @@ function Get-AccessKey
                 "expires_at" = $expirationTime.ToString("yyyy-MM-ddTHH:mm:ss")
             }
 
-            # Write the token data to accessToken.json (create or update)
+            # Write the token data to the temp folder
             $accessKeyData | ConvertTo-Json | Set-Content -Path $tokenFile
 
             return @{
