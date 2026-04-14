@@ -171,9 +171,9 @@ function Get-AllItems
     The matching item object, or $null if not found.
 
 .EXAMPLE
-    $template = Get-Item -accessKey $accessKey -uri "$baseUri/project-templates" -id "12345" -propertyName "Project template"
+    $template = Get-SingleItem -accessKey $accessKey -uri "$baseUri/project-templates" -id "12345" -propertyName "Project template"
 #>
-function Get-Item
+function Get-SingleItem
 {
     param (
         [Parameter(Mandatory=$true)]
@@ -572,7 +572,7 @@ Export-ModuleMember -Function Get-BaseUri
 Export-ModuleMember -Function Set-BaseUri
 Export-ModuleMember -Function Get-RequestHeader
 Export-ModuleMember -Function Get-AllItems
-Export-ModuleMember -Function Get-Item
+Export-ModuleMember -Function Get-SingleItem
 Export-ModuleMember -Function Get-StringUri
 Export-ModuleMember -Function Get-FilterString
 Export-ModuleMember -Function Invoke-SafeMethod

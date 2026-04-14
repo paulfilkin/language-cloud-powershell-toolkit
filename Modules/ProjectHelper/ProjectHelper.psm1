@@ -236,6 +236,7 @@ function New-Project
         -description $description;
 
     # return @($projectBody | ConvertTo-Json -Depth 10);
+    # Write-Host ($projectBody | ConvertTo-Json -Depth 10) -ForegroundColor Magenta
     $projectCreateResponse = Get-ProjectCreationRequest -accessKey $accessKey -project $projectBody
 
     Write-Host "Creating the project..." -ForegroundColor Green
@@ -375,7 +376,7 @@ function Get-Project
         [string] $projectName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/projects" -id $projectId -name $projectName `
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/projects" -id $projectId -name $projectName `
         -uriQuery "?fields=id,name" `
         -propertyName "Project"
 }

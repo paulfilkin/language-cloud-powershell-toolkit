@@ -126,7 +126,7 @@ function Get-ProjectTemplate
         [String] $projectTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/project-templates" -uriQuery "?fields=id,name,description,languageDirections,location" `
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/project-templates" -uriQuery "?fields=id,name,description,languageDirections,location" `
                     -id $projectTemplateId -name $projectTemplateName -propertyName "Project template";
 }
 
@@ -1151,7 +1151,7 @@ function Get-TranslationEngine
         [String] $translationEngineName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-engines" `
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-engines" `
          -uriQuery "?fields=name,description,location,definition" -id $translationEngineId `
          -name $translationEngineName -propertyName "Translation engine"
 }
@@ -1274,7 +1274,7 @@ function Get-Customer
         [string] $customerName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/customers" -uriQuery "?fields=id,name,location" -id $customerId -name $customerName -propertyName "Customer";
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/customers" -uriQuery "?fields=id,name,location" -id $customerId -name $customerName -propertyName "Customer";
 }
 
 <#
@@ -1711,7 +1711,7 @@ function Get-FileTypeConfiguration
         [string] $fileTypeName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/file-processing-configurations" `
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/file-processing-configurations" `
         -uriQuery "?fields=id,name,location" -id $fileTypeId -name $fileTypeName `
         -propertyName "File processing configuration"
 }
@@ -1833,7 +1833,7 @@ function Get-Workflow
         [string] $workflowName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/workflows" `
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/workflows" `
          -uriQuery "?fields=id,name,description,location,workflowTemplate,languageDirections" `
          -id $workflowId -name $workflowName -propertyName "Workflow";
 }
@@ -1949,7 +1949,7 @@ function Get-PricingModel {
         [String] $pricingModelName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/pricing-models" `
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/pricing-models" `
         -uriQuery "?fields=id,name,description,currencyCode,location" -id $pricingModelId -name $pricingModelName `
         -propertyName "Pricing model"
 }
@@ -2066,7 +2066,7 @@ function Get-ScheduleTemplate
         [string] $scheduleTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/schedule-templates" `
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/schedule-templates" `
         -uriQuery "?fields=name,description,location" -id $scheduleTemplateId -name $scheduleTemplateName `
         -propertyName "Schedule template"
 }
@@ -2203,7 +2203,7 @@ function Get-Location
         [String] $locationName
     )
 
-    return Get-Item -accessKey $accessKey -id $locationId -name $locationName -uri "$(Get-LCBaseUri)/folders" -propertyName "Folder";
+    return Get-SingleItem -accessKey $accessKey -id $locationId -name $locationName -uri "$(Get-LCBaseUri)/folders" -propertyName "Folder";
 }
 
 <#
@@ -2323,7 +2323,7 @@ function Get-CustomField
         [String] $customFieldName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/custom-field-definitions" `
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/custom-field-definitions" `
          -propertyName "Custom field definition" `
          -uriQuery "?fields=id,name,key,description,defaultValue,type,location,resourceType,isMandatory,pickListOptions" `
          -id $customFieldId -name $customFieldName;
@@ -2441,7 +2441,7 @@ function Get-TranslationMemory
         [string] $translationMemoryName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-memory" -id $translationMemoryId -name $translationMemoryName -propertyName "Translation memory";
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-memory" -id $translationMemoryId -name $translationMemoryName -propertyName "Translation memory";
 }
 
 <#
@@ -3284,7 +3284,7 @@ function Get-TranslationQualityAssessment
         [string] $tqaName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/tqa-profiles" -id $tqaId -name $tqaName -propertyName "Tqa profile";
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/tqa-profiles" -id $tqaId -name $tqaName -propertyName "Tqa profile";
 }
 
 <#
@@ -3399,7 +3399,7 @@ function Get-LanguageProcessingRule
         [string] $languageProcessingName
     )
 
-    return Get-Item -accessKey $accessKey  -uri "$(Get-LCBaseUri)/language-processing-rules" `
+    return Get-SingleItem -accessKey $accessKey  -uri "$(Get-LCBaseUri)/language-processing-rules" `
              -uriQuery "?fields=id,name,description" -id $languageProcessingId -name $languageProcessingName `
              -propertyName "Language processing rule"
 }
@@ -3526,7 +3526,7 @@ function Get-FieldTemplate
         [string] $fieldTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-memory/field-templates" -uriQuery "?fields=id,name,description,location" `
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/translation-memory/field-templates" -uriQuery "?fields=id,name,description,location" `
                 -id $fieldTemplateId -name $fieldTemplateName -propertyName "Field template";
 }
 

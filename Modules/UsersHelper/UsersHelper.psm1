@@ -687,7 +687,7 @@ function Get-Group
 
     $baseUri = Get-BaseUri
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/groups" `
+    return Get-SingleItem -accessKey $accessKey -uri "$baseUri/groups" `
                     -id $groupId -name $groupName -propertyName "Group"
 }
 
@@ -1045,7 +1045,7 @@ function Get-Role
 
     $baseUri = Get-BaseUri
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/roles" `
+    return Get-SingleItem -accessKey $accessKey -uri "$baseUri/roles" `
                     -id $roleId -name $roleName -propertyName "Role"
 }
 
@@ -1348,7 +1348,7 @@ function Get-Application
 
     $baseUri = Get-BaseUri
 
-    return Get-Item -accessKey $accessKey -uri "$baseUri/applications" `
+    return Get-SingleItem -accessKey $accessKey -uri "$baseUri/applications" `
                     -id $applicationId -name $applicationName -propertyName "Application"
 }
 

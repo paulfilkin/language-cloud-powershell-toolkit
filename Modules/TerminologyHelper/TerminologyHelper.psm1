@@ -119,7 +119,7 @@ function Get-Termbase
         [string] $termbaseName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/termbases" `
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/termbases" `
                          -uriQuery "?fields=id,name,description,copyright,location,termbaseStructure" `
                          -id $termbaseId -name $termbaseName -propertyName "Termbase"
 }
@@ -841,7 +841,7 @@ function Get-TermbaseTemplate
         [string] $termbaseTemplateName
     )
 
-    return Get-Item -accessKey $accessKey -uri "$(Get-LCBaseUri)/termbase-templates" `
+    return Get-SingleItem -accessKey $accessKey -uri "$(Get-LCBaseUri)/termbase-templates" `
             -uriQuery "?fields=id,name,description,copyright,location,type,languages,fields.name,fields.level,fields.dataType,fields.pickListValues,fields.allowCustomValues,fields.allowMultiple,fields.isMandatory" `
             -id $termbaseTemplateId -name $termbaseTemplateName -propertyName "Termbase template"
 }
